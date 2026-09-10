@@ -2,7 +2,7 @@
   "description": "Suanming Preview - Eastem Time Culture Archive (run in WeChat DevTools, tourist appid; replace with your own AppID when available)",
   "compileType": "miniprogram",
   "libVersion": "3.6.2",
-  "appid": "touristappid",
+  "appid": "wx2dfa85a31cf906d1",
   "projectname": "suanming-preview",
   "setting": {
     "es6": true,

@@ -1,0 +1,40 @@
+# Suanming Preview 最小 CI（B-1 ⑥ / Phase 0 任务 9）
+# 目标：安装 → 类型检查 → 静态检查 → 单元测试。固定 locale=C.UTF-8 + timezone=UTC（B-6 ⑥ 环境侧）。
+# 只做最小门禁，不建设复杂平台（Development Plan Phase 0 风险提示）。
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (项目固定 18.20.4)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.20.4
+          cache: npm
+
+      - name: 安装依赖（preinstall 校验 Node 主版本）
+        run: npm install
+
+      - name: 类型检查 + 静态检查
+        run: npm run build:check
+
+      - name: 单元测试
+        run: npm run test:unit
+
+      - name: 环境指纹（B-6 关闭证据侧）
+        run: |
+          node -e "console.log('NODE=' + process.version); console.log('INTL_LOCALE=' + process.env.LANG); console.log('TZ=' + process.env.TZ)"
+          npx tsc -v

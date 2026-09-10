@@ -1,0 +1,30 @@
+# Node
+node_modules/
+npm-debug.log*
+*.tsbuildinfo
+dist/
+dist-test/
+build/
+
+# 微信开发者工具
+project.private.config.json
+project.private.config.json.*
+*.wxml.wxss
+miniprogram/miniprogram_npm/
+
+# 密钥与环境：绝不提交
+.env
+.env.*
+!.env.example
+**/appid*.json
+*.pem
+*.key
+
+# 系统
+.DS_Store
+Thumbs.db
+*.log
+
+# 测试产物
+coverage/
+.tmp/

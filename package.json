@@ -1,0 +1,27 @@
+{
+  "name": "suanming-preview",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Suanming Preview · 东方时间文化档案微信小程序（独立仓库）",
+  "type": "module",
+  "engines": {
+    "node": "18.20.4"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "node --test --experimental-vm-modules dist-test/tests/unit",
+    "test:build": "node -e \"fs.rmSync('dist-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json",
+    "test:unit": "npm run test:build && npm run test",
+    "test:all": "npm run build:check && npm run test:unit",
+    "build:check": "npm run typecheck && npm run lint",
+    "preinstall": "node scripts/check-node-version.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "eslint": "^8.57.0",
+    "globals": "^17.12.0",
+    "typescript": "5.4.5",
+    "typescript-eslint": "^7.7.0"
+  }
+}

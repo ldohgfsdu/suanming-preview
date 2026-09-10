@@ -12,8 +12,14 @@ import {
   computeInputHash,
   buildArchiveScope,
   assertInputScope,
+  computeDocHash,
+  buildDocHashScope,
+  assertDocScope,
+  DOC_HASH_KEYS,
   INPUT_HASH_KEYS,
   type ArchiveInput,
+  type ArchiveVersion,
+  type ArchiveFacts,
 } from '../../shared/domain/archiveDocument.js';
 
 function sampleInput(overrides: Partial<ArchiveInput> = {}): ArchiveInput {
@@ -86,4 +92,45 @@ test('collection 边界：solar_time_mode 三值各产生不同 hash + hour_unkn
   assert.strictEqual(set.size, 3, '三值应互异');
   const withUnknown = computeInputHash(sampleInput({ hour: -1, minute: -1 })).value;
   assert.notStrictEqual(withUnknown, base, 'hour_unknown 应影响 hash');
+});
+
+// ---------------- docHash（S-4 §5 + input_hash + §6）----------------
+function sampleVersion(): ArchiveVersion {
+  return { schemaVersion: 'v1', algoVersion: 'bazi-core-1.3', traceVersion: 'trace-1', chartSchemaVersion: null, factsSchemaVersion: null };
+}
+function sampleFacts(): ArchiveFacts {
+  return {
+    solarNormalized: { year: 2023, month: 3, day: 20, hour: 12, minute: 0, hourUnknown: false },
+    lunar: { year: 2023, month: 2, day: 29, isLeapMonth: false },
+    instantIso: '2023-03-20T04:00:00Z',
+    prevTerm: { name: '惊蛰', instantIso: '2023-03-06T04:00:00Z', ordinal: 4 },
+    nextTerm: { name: '春分', instantIso: '2023-03-20T21:00:00Z', ordinal: 5 },
+    daysToNextTerm: 0.4,
+    yearGanZhi: '癸卯', monthGanZhi: '乙卯', dayGanZhi: '戊寅', hourGanZhi: '戊午',
+    lonDiffSeconds: -14400, eotSeconds: -420, totalOffsetSeconds: -14820, solarTimeDegraded: true,
+    elementCount: { wood: 1, fire: 1, earth: 2, metal: 0, water: 0 },
+  };
+}
+
+test('docHash scope 恰好含 §7 的 19 键，排除集不在内', () => {
+  const scope = buildDocHashScope(sampleVersion(), 'sha256:abc', sampleFacts());
+  const keys = Object.keys(scope);
+  assert.strictEqual(keys.length, DOC_HASH_KEYS.length);
+  assert.strictEqual(keys.length, 19);
+  for (const forbid of ['doc_id', 'created_at', 'updated_at', '_openid', 'display_iso_utc', 'input_echo', 'trace', 'insight']) {
+    assert.ok(!keys.includes(forbid), `docHash OUT 键不应存在: ${forbid}`);
+  }
+  assertDocScope(scope);
+});
+
+test('版本层非 null chart/facts 应抛错（TBD-2）', () => {
+  assert.throws(() => computeDocHash({ ...sampleVersion(), chartSchemaVersion: 'x' }, 'sha256:abc', sampleFacts()));
+});
+
+test('docHash DEC 字段为定点整数且稳定', () => {
+  const v = sampleVersion();
+  const a = computeDocHash(v, 'sha256:abc', sampleFacts()).value;
+  const b = computeDocHash(v, 'sha256:abc', sampleFacts()).value;
+  assert.strictEqual(a, b);
+  assert.ok(a.startsWith('sha256:'));
 });

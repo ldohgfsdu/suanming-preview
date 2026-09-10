@@ -1,0 +1,9 @@
+{
+  "desc": "generate sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

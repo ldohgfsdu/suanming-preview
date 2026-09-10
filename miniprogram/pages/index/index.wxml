@@ -1,0 +1,29 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">东方时间文化档案</view>
+    <view class="hero-sub">基于真实天文历法计算的时间档案</view>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <view class="label">选择日期</view>
+      <picker class="picker" mode="date" start="1900-01-31" end="2100-12-31" value="{{date}}" bindchange="onDateChange">
+        <view class="picker-value">{{dateLabel || date}}</view>
+      </picker>
+    </view>
+    <button class="btn" bindtap="onGenerate">生成档案</button>
+  </view>
+
+  <view wx:if="{{hasResult}}" class="card result">
+    <view class="result-title">历法档案</view>
+    <view class="kv"><text class="k">公历</text><text class="v">{{result.solar}}</text></view>
+    <view class="kv"><text class="k">年柱</text><text class="v">{{result.yearPillar}}（干支年 {{result.ganzhiYear}}）</text></view>
+    <view class="kv"><text class="k">日柱</text><text class="v">{{result.dayPillar}}</text></view>
+    <view class="divider"></view>
+    <view class="kv"><text class="k">上一个节气</text><text class="v">{{result.prevTerm}}</text></view>
+    <view class="kv"><text class="k">下一个节气</text><text class="v">{{result.nextTerm}}</text></view>
+    <view class="kv"><text class="k">距下节气</text><text class="v">{{result.daysToNext}}</text></view>
+    <view class="kv"><text class="k">均时差</text><text class="v">{{result.eot}}</text></view>
+    <view class="note">以上均为确定的天文历法事实，不含任何命运、吉凶或运气推算。</view>
+  </view>
+</view>

@@ -1,0 +1,43 @@
+.page { padding: 40rpx 32rpx 60rpx; max-width: 720rpx; margin: 0 auto; }
+
+.hero { padding: 24rpx 8rpx 40rpx; }
+.hero-title { font-size: 44rpx; font-weight: 600; letter-spacing: 2rpx; }
+.hero-sub { margin-top: 12rpx; color: var(--muted); font-size: 24rpx; }
+
+.card {
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.03);
+}
+
+.row { display: flex; align-items: center; justify-content: space-between; padding: 12rpx 0; }
+.label { color: var(--muted); font-size: 28rpx; }
+.picker { flex: 1; text-align: right; }
+.picker-value { font-size: 32rpx; }
+
+.btn {
+  margin-top: 32rpx;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 14rpx;
+  font-size: 30rpx;
+  line-height: 88rpx;
+  height: 88rpx;
+}
+.btn::after { border: none; }
+
+.result-title { font-size: 34rpx; font-weight: 600; margin-bottom: 20rpx; }
+.kv {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.k { color: var(--muted); font-size: 26rpx; }
+.v { font-size: 30rpx; }
+.divider { height: 1rpx; background: var(--line); margin: 20rpx 0; }
+.note { margin-top: 24rpx; color: var(--muted); font-size: 24rpx; line-height: 1.6; }

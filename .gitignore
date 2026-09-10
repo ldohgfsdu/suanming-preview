@@ -28,3 +28,9 @@ Thumbs.db
 # 测试产物
 coverage/
 .tmp/
+
+# Kotlin 参考实现编译产物（B-6 跨语言对拍用，源码已提交，jar 不入库）
+kotlin-ref/out/
+*.class
+*.jar
+!kotlin-ref/src/**

@@ -1,5 +1,6 @@
 // pages/index/index.js — 输入公历日期并生成本地历法档案（纯事实，无命运推算）
-import { buildFacts } from '../../lib/engine.js';
+// 相对导入使用无扩展名写法（微信 DevTools 最稳）；Node 单测仍用带扩展名导入。
+import { buildFacts } from '../../lib/engine';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 

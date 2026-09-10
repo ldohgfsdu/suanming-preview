@@ -13,6 +13,7 @@ import {
   termJdeNear, dayPillar, yearPillar, eotMinutes, isoUtc,
   GANS, ZHIS, TERMS,
 } from './engine.js';
+import { solarToLunar } from './lunar.js';
 
 export const ELEMENT = {
   '甲': 'wood', '乙': 'wood', '丙': 'fire', '丁': 'fire', '戊': 'earth',
@@ -164,9 +165,12 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
 
   const moon = lunarPhase(lunarAge(jd).ageDays);
 
+  const lunar = solarToLunar(y, m, d);
+
   return {
     solar: { y, m, d },
     instant_day: `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+    lunar, // {year,month,day,leap,approx,text} 或 null
     four: {
       year: { label: '年', gan: yp.gan, zhi: yp.zhi, ganz: yp.gan + yp.zhi, element: ELEMENT[yp.gan] },
       month: mp ? { label: '月', gan: mp.gan, zhi: mp.zhi, ganz: mp.ganzhi, element: ELEMENT[mp.gan] } : null,

@@ -8,9 +8,9 @@
  *
  * 口径：
  *   - S4 冻结稿 §2/§5/§6/§7
- *   - 工程纪律：只 map 引擎真实算出的量；§6 `lunar` 的落地日历日（year/month/day）
- *     依赖“农历日历表”，P0 未具备 → 显式 null（不伪造数值），与 TBD-2 的
- *     chart/facts_schema_version = null 同理（null = 未解析，非“已算”）。
+ *   - 工程纪律：只 map 引擎真实算出的量；§6 `lunar` 的落地日历日在 lunar-table
+ *     （Meeus 朔 + 中气）具备后被 engine 实际计算出（year/month/leap 与黄金锚点
+ *     对拍通过，day 带朔日边界 ±1 的 approx 标记）；表未覆盖 → 显式 null。
  *   - engine 的 `trueSolar.offsetMinutes` 是总时差（分钟）；§6 要求拆成秒：
  *     lon_diff_seconds / eot_seconds / total_offset_seconds，这里用 engine 导出
  *     eotMinutes(JD) 与输入 lonDeg 重拆。
@@ -44,11 +44,16 @@ export function toFacts(arc, { year, month, day, hour, minute }, lonDeg, jd) {
   }
   const solarTimeDegraded = !Number.isFinite(totalOffsetSeconds);
 
+  // 农历落地日：engine computeArchive 已由 lunar-table（Meeus 朔+中气）算得；
+  // 若表未覆盖则该日为 null（不伪造）。lunar 恒带 approx:true 标记（朔日边界 ±1）。
+  const lun = arc.lunar && arc.lunar.year != null ? arc.lunar : null;
   return {
     solarNormalized: { year, month, day, hour: hourVal, minute: minuteVal, hourUnknown: hourVal === null },
     lunar: {
-      year: null, month: null, day: null, // 农历日历日未具备表 → 不伪造
-      isLeapMonth: false,
+      year: lun ? lun.year : null,
+      month: lun ? lun.month : null,
+      day: lun ? lun.day : null,
+      isLeapMonth: lun ? lun.leap : false,
     },
     instantIso: `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00Z`,
     prevTerm: arc.term.prev ? { name: arc.term.prev.name, instantIso: arc.term.prev.utc, ordinal: arc.term.prev.ord } : null,

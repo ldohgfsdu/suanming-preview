@@ -4,7 +4,7 @@
  * 覆盖：
  *   - 适配输出与 shared ArchiveFacts 形状一致
  *   - 传入 computeDocHash 不抛键集断言且 hash 稳定
- *   - 农历日历日 = null（P0 未具备农历表，不伪造）
+ *   - 农历日历日由 lunar-table 实算（year 非 null）；未覆盖时显式 null
  *   - 太阳时差拆秒可计算；不同输入 → 不同 doc_hash
  */
 import { test } from 'node:test';
@@ -30,9 +30,9 @@ test('闭环: 引擎产物 → ArchiveFacts → 稳定 doc_hash, 键集断言通
   assert.strictEqual(facts.yearGanZhi.length, 2);
   assert.strictEqual(facts.dayGanZhi.length, 2);
   assert.deepStrictEqual(Object.keys(facts.elementCount), ['wood', 'fire', 'earth', 'metal', 'water']);
-  // 农历日历日 = null（未具备表）
-  assert.strictEqual(facts.lunar.year, null);
-  assert.strictEqual(facts.lunar.month, null);
+  // 农历日历日 = 实算（lunar-table 已具备；2023-03-20 属 2023 年二月初一/前）
+  assert.strictEqual(facts.lunar.year, 2023);
+  assert.ok(Number.isInteger(facts.lunar.month) && facts.lunar.month >= 1 && facts.lunar.month <= 12);
   // 提供了经度 → 未降级
   assert.strictEqual(facts.solarTimeDegraded, false);
 

@@ -1,29 +1,79 @@
 <view class="page">
+
   <view class="hero">
     <view class="hero-title">东方时间文化档案</view>
     <view class="hero-sub">基于真实天文历法计算的时间档案</view>
   </view>
 
+  <!-- 输入 -->
   <view class="card">
     <view class="row">
-      <view class="label">选择日期</view>
+      <view class="label">公历日期</view>
       <picker class="picker" mode="date" start="1900-01-31" end="2100-12-31" value="{{date}}" bindchange="onDateChange">
         <view class="picker-value">{{dateLabel || date}}</view>
       </picker>
     </view>
+
+    <view class="row">
+      <view class="label">时辰</view>
+      <picker class="picker" mode="selector" range="{{['时辰未知','子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']}}" bindchange="onHourChange">
+        <view class="picker-value">{{hourLabel}}</view>
+      </picker>
+    </view>
+
+    <view class="row">
+      <view class="label">所在经度（东经，可省）</view>
+      <input class="lon-input" type="digit" placeholder="如 116.4" value="{{lon}}" bindinput="onLonInput" placeholder-class="ph" />
+    </view>
+
     <button class="btn" bindtap="onGenerate">生成档案</button>
   </view>
 
+  <!-- 结果 -->
   <view wx:if="{{hasResult}}" class="card result">
-    <view class="result-title">历法档案</view>
-    <view class="kv"><text class="k">公历</text><text class="v">{{result.solar}}</text></view>
-    <view class="kv"><text class="k">年柱</text><text class="v">{{result.yearPillar}}（干支年 {{result.ganzhiYear}}）</text></view>
-    <view class="kv"><text class="k">日柱</text><text class="v">{{result.dayPillar}}</text></view>
+    <view class="result-head">
+      <view class="result-title">历法档案</view>
+      <view class="result-meta">{{result.solar}}</view>
+    </view>
+
+    <!-- 四柱 -->
+    <view class="pillars">
+      <view class="pillar" wx:for="{{result.pillars}}" wx:key="label">
+        <view class="pillar-label">{{item.label}}柱</view>
+        <view class="pillar-ganzhi">{{item.ganz}}</view>
+        <view class="pillar-elem">{{item.element}}</view>
+      </view>
+    </view>
+
+    <view class="kv"><text class="k">日柱纳音</text><text class="v">{{result.nayin}}</text></view>
+
     <view class="divider"></view>
+
+    <!-- 五行字数 -->
+    <view class="section-title">五行四柱字数</view>
+    <view class="tally">
+      <view class="tally-chip" wx:for="{{result.tally}}" wx:key="name">
+        <text class="tally-name">{{item.name}}</text>
+        <text class="tally-n">{{item.n}}</text>
+      </view>
+    </view>
+
+    <view class="divider"></view>
+
+    <!-- 节气 -->
+    <view class="section-title">节气</view>
     <view class="kv"><text class="k">上一个节气</text><text class="v">{{result.prevTerm}}</text></view>
     <view class="kv"><text class="k">下一个节气</text><text class="v">{{result.nextTerm}}</text></view>
     <view class="kv"><text class="k">距下节气</text><text class="v">{{result.daysToNext}}</text></view>
-    <view class="kv"><text class="k">均时差</text><text class="v">{{result.eot}}</text></view>
-    <view class="note">以上均为确定的天文历法事实，不含任何命运、吉凶或运气推算。</view>
+
+    <view class="divider"></view>
+
+    <!-- 月相 / 真太阳时 -->
+    <view class="section-title">月相与时间</view>
+    <view class="kv"><text class="k">月相</text><text class="v">{{result.moon}}</text></view>
+    <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{result.trueSolar}}</text></view>
+
+    <view class="note">本档案均由确定的天文历法计算得出，不含任何命运、吉凶或运气推算。</view>
   </view>
+
 </view>

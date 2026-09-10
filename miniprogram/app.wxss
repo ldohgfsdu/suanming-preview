@@ -3,6 +3,7 @@ page {
   --ink: #2c2a26;
   --muted: #8b867c;
   --line: #e4e0d6;
+  --accent: #9a6b4f;
   background: var(--paper);
   color: var(--ink);
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;

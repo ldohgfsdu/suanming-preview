@@ -1,7 +1,8 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/about/about"
+    "pages/about/about",
+    "pages/history/history"
   ],
   "window": {
     "navigationBarTitleText": "东方时间文化档案",

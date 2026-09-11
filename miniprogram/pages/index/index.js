@@ -1,7 +1,7 @@
 // pages/index/index.js — 东方时间文化档案 首页。
 // 目标：降低输入门槛（出生地点选择，无需知道经度；公历/农历切换；时辰显示现代时间），
 //       增强可信度（今日天时、真太阳时说明、生成过程过渡）。
-// 纯天文历法事实，不含任何命运、吉凶或运气推算。
+// 纯天文历法事实，不含任何预测、判定或运气换算。
 // 相对导入保持带 .js 扩展名，与 lib/ 内既有约定一致。
 
 import { computeArchive, ELEMENT_NAME as ELEM_NAME } from '../../lib/archive.js';
@@ -11,6 +11,8 @@ import { lunarToSolar, lunarMonthsOfYear, lunarDaysOfMonth } from '../../lib/lun
 import { sunTimes } from '../../lib/sun.js';
 
 function pad(n) { return String(n).padStart(2, '0'); }
+const HISTORY_KEY = 'eastTime.history.v1';
+const MAX_HISTORY = 50;
 function fmtUTC(utc) {
   if (!utc) return '—';
   const s = utc.slice(0, 16).replace('T', ' ');
@@ -61,6 +63,10 @@ Page({
     hourIdx: 0,
     hour: -1,                     // 内部小时数（-1=未知）
     hourLabel: '时辰未知',
+
+    // 性别（仅供档案存档，不参与历法计算）
+    genders: ['男', '女'],
+    gender: '男',
 
     // 出生地点（省级菜单）
     provNames: PROVINCE_NAMES,
@@ -225,6 +231,11 @@ Page({
       hourLabel: `${s.name}（${s.range}）`,
       hasResult: false, result: null,
     });
+  },
+
+  // 性别选择（不影响历法计算，仅存档展示）
+  onGenderTap(e) {
+    this.setData({ gender: e.currentTarget.dataset.g, hasResult: false, result: null });
   },
 
   // ============ 出生地点 ============
@@ -398,15 +409,21 @@ Page({
       const pillars = ['year', 'month', 'day', 'hour']
         .filter((k) => f.four[k])
         .map((k) => ({ label: f.four[k].label, ganz: f.four[k].ganz, element: ELEM_NAME[f.four[k].element] }));
-      const tallyList = ['wood', 'fire', 'earth', 'metal', 'water']
+      const tallyRaw = ['wood', 'fire', 'earth', 'metal', 'water']
         .map((k) => ({ name: ELEM_NAME[k], n: (f.tally[k] || 0) }))
         .filter((x) => x.n > 0);
+      const tallyMax = Math.max(1, ...tallyRaw.map((x) => x.n));
+      const tally = tallyRaw.map((x) => ({
+        ...x,
+        pct: Math.round((x.n / tallyMax) * 100),
+      }));
       const term = f.term.next ? `${f.term.next.name} ${formatTime(f.term.next.utc)}` : '—';
       this.setData({
         generating: false,
         hasResult: true,
         result: {
           solar: `${y}-${pad(m)}-${pad(d)}`,
+          gender: this.data.gender,
           lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
           place: lon != null ? `${this.data.placeLabel} · 东经 ${lon}°` : '未选择出生地（跳过真太阳时）',
           pillars,
@@ -423,6 +440,7 @@ Page({
         },
       });
       wx.pageScrollTo({ scrollTop: 0, duration: 300 });
+      this.saveHistory(f, input, lon);
     } catch (err) {
       this.setData({ generating: false, genStepIndex: -1 });
       wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' });
@@ -444,6 +462,45 @@ Page({
       content: '根据真实天文历法计算当日干支、节气节点、日出日落时间，展示历法计算能力。',
       showCancel: false,
     });
+  },
+
+  // 本地历史存档（P0-5 基础版：仅本地，无云端依赖；含隐私数据说明）
+  saveHistory(f, input, lon) {
+    const { y, m, d } = input;
+    const rec = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      solar: `${y}-${pad(m)}-${pad(d)}`,
+      yearGanzhi: f.four.year ? f.four.year.ganz : '',
+      dayGanzhi: f.four.day ? f.four.day.ganz : '',
+      gender: this.data.gender,
+      placeLabel: (lon != null && this.data.placeLabel) ? this.data.placeLabel : '未选择地点',
+    };
+    try {
+      const list = wx.getStorageSync(HISTORY_KEY) || [];
+      list.unshift(rec);
+      const trimmed = list.slice(0, MAX_HISTORY);
+      wx.setStorageSync(HISTORY_KEY, trimmed);
+    } catch (e) { /* 存储失败静默，不影响本次生成 */ }
+  },
+
+  goHistory() {
+    wx.navigateTo({ url: '/pages/history/history' });
+  },
+
+  // 由历史页“重新生成”回填日期与性别
+  applyHistory(r) {
+    if (!r) return;
+    const set = {};
+    if (r.solar && /^\d{4}-\d{2}-\d{2}$/.test(r.solar)) {
+      set.calMode = 'solar';
+      set.solarDate = r.solar;
+      set.solarDateLabel = r.solar;
+    }
+    if (r.gender === '男' || r.gender === '女') set.gender = r.gender;
+    set.hasResult = false;
+    set.result = null;
+    this.setData(set);
   },
 
   // 打开“关于 / 免责声明“页面

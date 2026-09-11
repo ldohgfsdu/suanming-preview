@@ -1,0 +1,70 @@
+/* pages/history/history.wxss — 历史档案 页 */
+.page {
+  padding: 24rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  max-width: 720rpx;
+  margin: 0 auto;
+}
+
+/* 空状态 */
+.empty {
+  padding: 160rpx 0;
+  text-align: center;
+}
+.empty-icon { font-size: 88rpx; margin-bottom: 24rpx; }
+.empty-text { font-size: 32rpx; color: var(--ink); margin-bottom: 12rpx; }
+.empty-sub { font-size: 25rpx; color: var(--muted); margin-bottom: 40rpx; }
+.btn-back {
+  display: inline-block;
+  padding: 0 56rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  letter-spacing: 3rpx;
+}
+.btn-back::after { border: none; }
+
+/* 列表头 */
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8rpx 4rpx 24rpx;
+}
+.list-title { font-size: 28rpx; color: var(--ink); }
+.clear-btn { color: var(--muted); font-size: 26rpx; padding: 8rpx 16rpx; border: 1rpx solid var(--line); border-radius: 28rpx; }
+
+/* 卡片 */
+.card {
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+.card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid var(--line);
+  margin-bottom: 8rpx;
+}
+.solar { font-size: 32rpx; font-weight: 600; color: var(--accent); }
+.meta { font-size: 22rpx; color: var(--muted); }
+.kv { display: flex; align-items: baseline; justify-content: space-between; padding: 12rpx 0; }
+.k { color: var(--muted); font-size: 25rpx; }
+.v { font-size: 28rpx; text-align: right; }
+.card-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 20rpx;
+  padding-top: 8rpx;
+}
+.act { font-size: 25rpx; padding: 10rpx 30rpx; border-radius: 30rpx; }
+.act-del { color: #b04a3a; border: 1rpx solid #e7d3cc; }
+.act-use { color: #fff; background: var(--accent); }

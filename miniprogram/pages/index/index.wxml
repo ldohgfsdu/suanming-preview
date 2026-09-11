@@ -71,6 +71,14 @@
       </picker>
     </view>
 
+    <!-- 性别（存档用，不计入历法数据） -->
+    <view class="row row-noborder">
+      <view class="label">性别</view>
+      <view class="gender-switch">
+        <view wx:for="{{genders}}" wx:key="*this" class="gender-opt {{gender === item ? 'on' : ''}}" data-g="{{item}}" bindtap="onGenderTap">{{item}}</view>
+      </view>
+    </view>
+
     <!-- 出生地点 -->
     <view class="sub-head">
       <text>出生地点</text>
@@ -147,12 +155,16 @@
     <view class="divider"></view>
 
     <view class="section-title">五行四柱字数</view>
-    <view class="tally">
-      <view class="tally-chip" wx:for="{{result.tally}}" wx:key="name">
-        <text class="tally-name">{{item.name}}</text>
-        <text class="tally-n">{{item.n}}</text>
+    <view class="tally" wx:if="{{result.tally.length}}">
+      <view class="tally-row" wx:for="{{result.tally}}" wx:key="name">
+        <view class="tally-name">{{item.name}}</view>
+        <view class="tally-track">
+          <view class="tally-fill" style="width:{{item.pct}}%"></view>
+        </view>
+        <view class="tally-n">{{item.n}}</view>
       </view>
     </view>
+    <view class="tally" wx:else><view class="tally-empty">—</view></view>
 
     <view class="divider"></view>
 
@@ -167,12 +179,18 @@
     <view class="kv"><text class="k">月相</text><text class="v">{{result.moon}}</text></view>
     <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{result.trueSolar}}</text></view>
 
-    <view class="note">本档案均由真实天文历法计算得出，不含任何命运、吉凶或运气推算。</view>
+    <view class="note">本档案均由真实天文历法计算得出，不含任何预测、判定或运气换算。</view>
   </view>
 
   <!-- 关于 / 免责声明入口 -->
   <view class="about-link" bindtap="goAbout">
     <text>关于本工具 · 算法说明 · 免责声明</text>
+    <text class="about-arrow">›</text>
+  </view>
+
+  <!-- 历史档案入口 -->
+  <view class="about-link" bindtap="goHistory">
+    <text>历史档案</text>
     <text class="about-arrow">›</text>
   </view>
 

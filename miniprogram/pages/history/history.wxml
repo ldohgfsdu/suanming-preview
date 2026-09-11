@@ -1,0 +1,36 @@
+<view class="page">
+
+  <!-- 空状态 -->
+  <view wx:if="{{!has}}" class="empty">
+    <view class="empty-icon">📁</view>
+    <view class="empty-text">还没有历史档案</view>
+    <view class="empty-sub">生成一份档案后会自动保存在这里</view>
+    <button class="btn-back" bindtap="onUse">去生成档案</button>
+  </view>
+
+  <!-- 历史列表 -->
+  <block wx:else>
+    <view class="list-head">
+      <view class="list-title">共 {{list.length}} 条</view>
+      <view class="clear-btn" bindtap="clearHistory">清空</view>
+    </view>
+
+    <view class="card" wx:for="{{list}}" wx:key="id">
+      <view class="card-top">
+        <view class="solar">{{item.solar}}</view>
+        <view class="meta">生成于 {{item.createdTime}}</view>
+      </view>
+      <view class="body">
+        <view class="kv"><text class="k">年柱</text><text class="v">{{item.yearGanzhi}}</text></view>
+        <view class="kv"><text class="k">日柱</text><text class="v">{{item.dayGanzhi}}</text></view>
+        <view class="kv"><text class="k">性别</text><text class="v">{{item.gender}}</text></view>
+        <view class="kv"><text class="k">地点</text><text class="v">{{item.placeLabel}}</text></view>
+      </view>
+      <view class="card-foot">
+        <view class="act act-del" data-id="{{item.id}}" bindtap="onDelete">删除</view>
+        <view class="act act-use" data-id="{{item.id}}" bindtap="onUse">重新生成</view>
+      </view>
+    </view>
+  </block>
+
+</view>

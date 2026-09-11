@@ -193,6 +193,7 @@
 .tally-empty { color: var(--muted); font-size: 26rpx; }
 
 .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 14rpx 0; border-bottom: 1rpx solid var(--line); }
+.kv .approx { font-size: 20rpx; color: var(--muted); margin-left: 8rpx; }
 .k { color: var(--muted); font-size: 25rpx; }
 .v { font-size: 28rpx; text-align: right; }
 .divider { height: 1rpx; background: var(--line); margin: 24rpx 0; }

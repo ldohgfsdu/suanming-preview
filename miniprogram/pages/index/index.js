@@ -448,6 +448,7 @@ Page({
           solar: `${y}-${pad(m)}-${pad(d)}`,
           gender: this.data.gender,
           lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
+          lunarApprox: f.lunar ? !!f.lunar.approx : false,
           place: lon != null ? `${this.data.placeLabel} · 东经 ${lon}°` : '未选择出生地（跳过真太阳时）',
           pillars,
           nayin: f.nayin,

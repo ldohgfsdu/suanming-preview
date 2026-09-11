@@ -155,7 +155,7 @@
     </view>
 
     <view class="kv"><text class="k">日柱纳音</text><text class="v">{{result.nayin}}</text></view>
-    <view class="kv" wx:if="{{result.lunarText}}"><text class="k">农历</text><text class="v">{{result.lunarText}}</text></view>
+    <view class="kv" wx:if="{{result.lunarText}}"><text class="k">农历</text><text class="v">{{result.lunarText}}<text wx:if="{{result.lunarApprox}}" class="approx">（朔日±1天）</text></text></view>
     <view class="kv"><text class="k">出生地点</text><text class="v">{{result.place}}</text></view>
 
     <view class="divider"></view>

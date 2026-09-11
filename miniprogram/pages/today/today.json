@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "今日天时",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
   "usingComponents": {}
 }

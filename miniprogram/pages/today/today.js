@@ -61,6 +61,11 @@ Page({
   onUnload() {
     if (this._ticker) clearInterval(this._ticker);
   },
+  onPullDownRefresh() {
+    // 下拉刷新：重新计算当日天象（含实时月份/时辰结转）
+    this.buildToday();
+    wx.stopPullDownRefresh();
+  },
 
   buildToday() {
     const now = new Date();

@@ -89,6 +89,12 @@ Page({
   onUnload() {
     if (this._ticker) clearInterval(this._ticker);
   },
+  onShareAppMessage() {
+    return {
+      title: `今日天时 · ${this.data.dateText} 干支、节气、月相、时辰表`,
+      path: '/pages/today/today',
+    };
+  },
   onPullDownRefresh() {
     // 下拉刷新：重新计算当日天象（含实时月份/时辰结转）
     this.buildToday();

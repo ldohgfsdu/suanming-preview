@@ -39,10 +39,17 @@ Page({
     loading: false,
   },
 
-  onLoad() {
-    const y = new Date().getFullYear();
+  onLoad(options) {
+    const qy = options && options.year ? parseInt(options.year, 10) : NaN;
+    const y = Number.isFinite(qy) && qy >= 1900 && qy <= 2100 ? qy : new Date().getFullYear();
     this.setData({ year: y });
     this.buildYear(y);
+  },
+  onShareAppMessage() {
+    return {
+      title: `${this.data.year} 年 · 全年 24 节气时刻（北京时）`,
+      path: `/pages/terms/terms?year=${this.data.year}`,
+    };
   },
 
   buildYear(year) {

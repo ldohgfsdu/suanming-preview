@@ -33,6 +33,7 @@
     <view class="kv"><text class="k">上一个</text><text class="v">{{term.prev}}</text></view>
     <view class="kv"><text class="k">下一个</text><text class="v">{{term.next}}</text></view>
     <view class="kv"><text class="k">距下节气</text><text class="v">{{term.daysToNext}}</text></view>
+    <view class="term-info" wx:if="{{termInfo}}">{{termInfo}}</view>
   </view>
 
   <!-- 月相 -->

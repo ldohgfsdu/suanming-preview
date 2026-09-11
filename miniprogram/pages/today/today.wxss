@@ -64,3 +64,14 @@
 .sc-ganz { font-size: 32rpx; font-weight: 700; margin-top: 4rpx; }
 .sc-range { font-size: 20rpx; color: var(--muted); margin-top: 2rpx; }
 .foot-sub { margin-top: 16rpx; font-size: 21rpx; color: var(--muted); line-height: 1.7; }
+
+/* 节气文化小辑 */
+.term-info {
+  margin-top: 16rpx;
+  padding: 18rpx 20rpx;
+  background: #f7f8fa;
+  border-radius: 12rpx;
+  font-size: 25rpx;
+  line-height: 1.75;
+  color: var(--ink);
+}

@@ -26,8 +26,13 @@
   <view class="card">
     <view class="card-title">数据与精度</view>
     <view class="card-body">
-      <view>节气时刻由天文算法迭代求解至秒级；真太阳时根据出生地点经度与均时差校正。</view>
-      <view class="gap">本工具为纯历法计算工具，所有结果均可在「算法透明」层面交叉验证，不含商业化预测或推断服务。</view>
+      <view class="kv"><text class="k">节气时刻</text><text class="v">太阳黄经 15° 整倍二分求解</text></view>
+      <view class="kv"><text class="k">节气验证</text><text class="v">2024 全年 24 节气与公开历书同日、时刻达分钟级</text></view>
+      <view class="kv"><text class="k">四柱 / 纳音</text><text class="v">基于稳定公历锚点精确确定</text></view>
+      <view class="kv"><text class="k">农历月 / 闰</text><text class="v">Meeus 朔 + 中气推导，20 组权威锚点强断言全对</text></view>
+      <view class="kv"><text class="k">农历日</text><text class="v">朔日起算，月初边界个别 ±1 天，已如实标记</text></view>
+      <view class="kv"><text class="k">日出日落</text><text class="v">NOAA 算法，误差 ±1 分钟</text></view>
+      <view class="gap">本工具为纯历法计算，所有结果均在「算法透明」层面可交叉复算，不含商业化预测或推断服务。</view>
     </view>
   </view>
 

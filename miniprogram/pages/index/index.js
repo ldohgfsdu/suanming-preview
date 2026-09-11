@@ -20,6 +20,18 @@ function fmtUTC(utc) {
 }
 function formatTime(utc) { return fmtUTC(utc); }
 
+// 距某节气剩余时间，返回「X天X小时」／「不足1小时」
+function fmtDaysLeft(days) {
+  if (days == null || !isFinite(days)) return '';
+  if (days <= 0.001) return '已到';
+  const totalH = days * 24;
+  const hh = Math.floor(totalH);
+  const mm = Math.round((totalH - hh) * 60);
+  if (hh <= 0) return `${mm} 分钟`;
+  if (hh < 24) return `${hh} 小时 ${mm} 分`;
+  return `${Math.floor(hh / 24)} 天 ${pad(hh % 24)} 时`;
+}
+
 // 十二时辰：现代时间范围（传统名称主、现代时间副）。内部 hour 为中点（子=0）。
 const SHICHEN = [
   { name: '子时', range: '23:00–01:00', hour: 0 },
@@ -361,6 +373,9 @@ Page({
           sunrise: sun.valid ? sun.sunrise : '—',
           sunset: sun.valid ? sun.sunset : '—',
           moon: f.moon ? f.moon.name : '—',
+          moonAge: f.moon ? Number(f.moon.ageDays).toFixed(1) : '',
+          daysToNext: f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(1) : '',
+          termTime: fmtDaysLeft(f.term.daysToNext),
           dateText: `${y}年${m}月${d}日`,
         },
       });

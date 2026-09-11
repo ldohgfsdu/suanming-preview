@@ -17,8 +17,9 @@
     <view class="today-ganzhi">{{today.ganzhi}}</view>
     <view class="today-grid">
       <view class="t-cell">
-        <view class="t-k">节气</view>
+        <view class="t-k">距下节气</view>
         <view class="t-v">{{today.termName}}</view>
+        <view class="t-s">{{today.termTime}}</view>
       </view>
       <view class="t-cell">
         <view class="t-k">日出</view>
@@ -33,6 +34,7 @@
         <view class="t-v">{{today.nowText}}</view>
       </view>
     </view>
+    <view class="today-moon">月相 {{today.moon}}<text wx:if="{{today.moonAge}}">（朔望月龄 {{today.moonAge}} 天）</text></view>
     <view class="today-foot" bindtap="goTerms">查看全年节气日历 ›</view>
   </view>
 

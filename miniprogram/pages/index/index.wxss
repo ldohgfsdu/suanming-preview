@@ -48,6 +48,9 @@
 .t-cell { width: 25%; box-sizing: border-box; padding: 8rpx 4rpx; }
 .t-k { color: var(--muted); font-size: 22rpx; margin-bottom: 10rpx; }
 .t-v { font-size: 30rpx; font-weight: 500; }
+.t-s { margin-top: 6rpx; font-size: 20rpx; color: var(--accent); }
+.today-moon { margin-top: 22rpx; padding-top: 18rpx; border-top: 1rpx solid var(--line); font-size: 25rpx; color: var(--muted); }
+.today-moon text { color: var(--ink); }
 
 /* ---------- 表单 ---------- */
 .section-head { font-size: 24rpx; color: var(--muted); letter-spacing: 3rpx; margin-bottom: 28rpx; }

@@ -9,7 +9,10 @@
   <view class="card today-card" wx:if="{{today}}">
     <view class="today-head">
       <view class="today-title">今日天时</view>
-      <view class="today-info" bindtap="onTodayInfo">ⓘ</view>
+      <view class="today-tools">
+        <view class="today-info" bindtap="onTodayInfo">ⓘ</view>
+        <view class="today-more" bindtap="goToday">详情 ›</view>
+      </view>
     </view>
     <view class="today-ganzhi">{{today.ganzhi}}</view>
     <view class="today-grid">

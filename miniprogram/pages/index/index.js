@@ -488,6 +488,16 @@ Page({
     wx.navigateTo({ url: '/pages/history/history' });
   },
 
+  goToday() {
+    wx.navigateTo({ url: '/pages/today/today' });
+  },
+
+  // 由今日页“以今日作为出生档案日期”回填
+  applyToday(solar) {
+    if (!solar) return;
+    this.setData({ calMode: 'solar', solarDate: solar, solarDateLabel: solar, hasResult: false, result: null });
+  },
+
   // 由历史页“重新生成”回填日期与性别
   applyHistory(r) {
     if (!r) return;

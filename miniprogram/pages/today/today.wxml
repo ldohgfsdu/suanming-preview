@@ -1,0 +1,70 @@
+<view class="page">
+
+  <!-- 日期头 -->
+  <view class="head">
+    <view class="date">{{dateText}}</view>
+    <view class="clock" wx:if="{{nowText}}">{{nowText}}</view>
+    <view class="sub" wx:if="{{lunarText}}">{{lunarText}}</view>
+  </view>
+
+  <!-- 当日干支 -->
+  <view class="card">
+    <view class="sec-title">今日干支</view>
+    <view class="ganzhi-row">
+      <view class="gz-item">
+        <view class="gz-sub">年</view>
+        <view class="gz-big">{{ganzhi.year}}</view>
+      </view>
+      <view class="gz-item">
+        <view class="gz-sub">月</view>
+        <view class="gz-big">{{ganzhi.month}}</view>
+      </view>
+      <view class="gz-item">
+        <view class="gz-sub">日</view>
+        <view class="gz-big">{{ganzhi.day}}</view>
+      </view>
+    </view>
+    <view class="nayin" wx:if="{{nayin}}">日柱纳音：{{nayin}}</view>
+  </view>
+
+  <!-- 节气 -->
+  <view class="card">
+    <view class="sec-title">节气</view>
+    <view class="kv"><text class="k">上一个</text><text class="v">{{term.prev}}</text></view>
+    <view class="kv"><text class="k">下一个</text><text class="v">{{term.next}}</text></view>
+    <view class="kv"><text class="k">距下节气</text><text class="v">{{term.daysToNext}}</text></view>
+  </view>
+
+  <!-- 月相 -->
+  <view class="card">
+    <view class="sec-title">月相</view>
+    <view class="kv"><text class="k">月相</text><text class="v">{{moon.phase}}</text></view>
+    <view class="kv"><text class="k">朔望月龄</text><text class="v">{{moon.age}}</text></view>
+  </view>
+
+  <!-- 日升日落 -->
+  <view class="card">
+    <view class="sec-title">日出日落（北京）</view>
+    <view class="kv"><text class="k">日出</text><text class="v">{{sun.sunrise}}</text></view>
+    <view class="kv"><text class="k">日落</text><text class="v">{{sun.sunset}}</text></view>
+    <view class="kv"><text class="k">白昼时长</text><text class="v">{{sun.daylight}}</text></view>
+  </view>
+
+  <!-- 四柱与五行 -->
+  <view class="card" wx:if="{{pillars.length}}">
+    <view class="sec-title">四柱（今日）</view>
+    <view class="pillars">
+      <view class="pillar" wx:for="{{pillars}}" wx:key="label">
+        <view class="p-label">{{item.label}}</view>
+        <view class="p-ganz">{{item.ganz}}</view>
+        <view class="p-elem">{{item.elem}}</view>
+      </view>
+    </view>
+    <view class="kv"><text class="k">五行四柱字数</text><text class="v">{{tally}}</text></view>
+  </view>
+
+  <!-- 操作 -->
+  <button class="btn-fill" bindtap="fillToday">以今日作为出生档案日期</button>
+
+  <view class="foot-note">以上均为真实天文历法计算，不含任何预测、判定或运气换算。</view>
+</view>

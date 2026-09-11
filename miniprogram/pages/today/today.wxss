@@ -1,0 +1,56 @@
+/* pages/today/today.wxss — 今日天时 独立页 */
+.page {
+  padding: 24rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  max-width: 720rpx;
+  margin: 0 auto;
+}
+
+.head {
+  text-align: center;
+  padding: 36rpx 0 12rpx;
+  margin-bottom: 12rpx;
+}
+.date { font-size: 44rpx; font-weight: 700; color: var(--ink); }
+.clock { font-size: 80rpx; font-weight: 600; color: var(--accent); margin: 8rpx 0; font-variant-numeric: tabular-nums; }
+.sub { font-size: 26rpx; color: var(--muted); margin-top: 8rpx; }
+
+.card {
+  background: #fff;
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+.sec-title { font-size: 26rpx; color: var(--muted); margin-bottom: 20rpx; letter-spacing: 2rpx; }
+
+.ganzhi-row { display: flex; justify-content: space-around; padding: 10rpx 0; }
+.gz-item { text-align: center; flex: 1; }
+.gz-sub { font-size: 24rpx; color: var(--muted); }
+.gz-big { font-size: 44rpx; font-weight: 700; color: var(--accent); margin-top: 6rpx; }
+.nayin { text-align: center; font-size: 25rpx; color: var(--ink); margin-top: 14rpx; }
+
+.kv { display: flex; align-items: baseline; justify-content: space-between; padding: 10rpx 0; }
+.k { color: var(--muted); font-size: 25rpx; flex-shrink: 0; }
+.v { font-size: 28rpx; text-align: right; }
+
+.pillars { display: flex; justify-content: space-between; margin-bottom: 16rpx; }
+.pillar { text-align: center; flex: 1; }
+.p-label { font-size: 22rpx; color: var(--muted); }
+.p-ganz { font-size: 36rpx; font-weight: 700; }
+.p-elem { font-size: 24rpx; color: var(--accent); }
+
+.btn-fill {
+  margin-top: 24rpx;
+  height: 92rpx;
+  line-height: 92rpx;
+  background: var(--ink);
+  color: #fff;
+  border-radius: 16rpx;
+  font-size: 29rpx;
+  letter-spacing: 2rpx;
+}
+.btn-fill::after { border: none; }
+
+.foot-note { text-align: center; font-size: 22rpx; color: var(--muted); margin-top: 28rpx; }

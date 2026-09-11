@@ -447,12 +447,24 @@ Page({
             : `${f.trueSolar.offsetMinutes >= 0 ? '+' : ''}${Number(f.trueSolar.offsetMinutes).toFixed(1)} 分钟`,
         },
       });
-      wx.pageScrollTo({ scrollTop: 0, duration: 300 });
+      // 生成完成后滚动到“历法档案”结果，让用户立即看到得出内容。
+      setTimeout(() => this.scrollToResult(), 120);
       this.saveHistory(f, input, lon);
     } catch (err) {
       this.setData({ generating: false, genStepIndex: -1 });
       wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' });
     }
+  },
+
+  // ============ 滚动到结果 ============
+  scrollToResult() {
+    wx.createSelectorQuery()
+      .select('.result')
+      .boundingClientRect((rect) => {
+        if (!rect || rect.top == null) return;
+        wx.pageScrollTo({ scrollTop: Math.max(0, rect.top - 20), duration: 400 });
+      })
+      .exec();
   },
 
   // ============ 分享卡片（canvas 导出） ============

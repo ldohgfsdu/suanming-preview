@@ -33,7 +33,6 @@
         <view class="t-v">{{today.nowText}}</view>
       </view>
     </view>
-  </view>
     <view class="today-foot" bindtap="goTerms">查看全年节气日历 ›</view>
   </view>
 

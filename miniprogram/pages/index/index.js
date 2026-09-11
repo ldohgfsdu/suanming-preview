@@ -69,6 +69,7 @@ Page({
     lunarValue: [0, 0, 0],       // [年, 月, 日] 索引
     lunarLabel: '',
     lunarSel: null,               // {year, month, leap, day}
+    lunarPreview: '',            // 农历→公历 即时换算预览
 
     // 时辰
     hourOptions: HOUR_OPTIONS,
@@ -172,12 +173,22 @@ Page({
     const yIdx = Math.max(0, years.indexOf(year));
     const mIdx = Math.max(0, months.findIndex((q) => q.month === month && q.leap === !!leap));
     const dIdx = Math.max(0, Math.min(day - 1, days.length - 1));
+    // 农历 → 公历 正向反查预览（教学/对照用）
+    let lunarPreview = '';
+    try {
+      const r = lunarToSolar(year, month, !!leap, day);
+      if (r) {
+        const p = (n) => String(n).padStart(2, '0');
+        lunarPreview = `${r.year} 年 ${p(r.month)} 月 ${p(r.day)} 日`;
+      }
+    } catch (e) { /* 预览失败不阻塞选择 */ }
     this.setData({
       lunarYearList: years,
       lunarMonthLabels: months.map((x) => x.label),
       lunarDayList: days,
       lunarValue: [yIdx, mIdx, dIdx],
       lunarSel: { year, month, leap: !!leap, day },
+      lunarPreview,
       lunarLabel: `${year}年${(leap ? '闰' : '')}${MONTH_CN[month]}月${DAY_CN[day] || day}`,
     });
   },

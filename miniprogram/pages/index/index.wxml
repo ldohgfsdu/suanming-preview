@@ -67,6 +67,7 @@
           <view class="picker-value">{{lunarLabel}}</view>
         </picker>
       </view>
+      <view class="lunar-preview" wx:if="{{lunarPreview}}">⇄ 对应公历 {{lunarPreview}}</view>
     </block>
 
     <!-- 时辰 -->

@@ -500,35 +500,44 @@ Page({
     if (!r) { wx.showToast({ title: '请先生成档案', icon: 'none' }); return; }
     const ctx = wx.createCanvasContext('shareCard', this);
     const W = 600, H = 760;
+    // 位图不随 CSS 变量变化：按系统深/浅主题选一套固定配色，保证海报两态观感一致。
+    const dark = (wx.getSystemInfoSync && wx.getSystemInfoSync().theme) === 'dark';
+    const P = dark ? {
+      bg: '#27241f', title: '#ede7df', sub: '#c89a6a', label: '#a99e8e',
+      line: '#3a3630', fill: '#38332a', bar: '#2f9e78', foot: '#726d63',
+    } : {
+      bg: '#faf7f0', title: '#3b2f28', sub: '#9a6b4f', label: '#9c8f80',
+      line: '#e6ded2', fill: '#efe9de', bar: '#12a173', foot: '#b0a69a',
+    };
     // 背景
-    ctx.setFillStyle('#faf7f0');
+    ctx.setFillStyle(P.bg);
     ctx.fillRect(0, 0, W, H);
     // 标题
     ctx.setTextAlign('center');
-    ctx.setFillStyle('#3b2f28');
+    ctx.setFillStyle(P.title);
     ctx.setFontSize(34);
     ctx.fillText('东方时间文化档案', W / 2, 76);
-    ctx.setFillStyle('#9a6b4f');
+    ctx.setFillStyle(P.sub);
     ctx.setFontSize(22);
     ctx.fillText(r.solar, W / 2, 112);
 
     // 四柱
     ctx.setFontSize(44);
-    ctx.setFillStyle('#3b2f28');
+    ctx.setFillStyle(P.title);
     const pCount = r.pillars.length;
     const colW = W / (pCount + 0.5);
     r.pillars.forEach((p, i) => {
       const x = colW * (i + 0.75);
       ctx.fillText(p.ganz, x, 180);
       ctx.setFontSize(20);
-      ctx.setFillStyle('#8a7a68');
+      ctx.setFillStyle(P.label);
       ctx.fillText(`${p.label}柱 · ${p.element}`, x, 208);
       ctx.setFontSize(44);
-      ctx.setFillStyle('#3b2f28');
+      ctx.setFillStyle(P.title);
     });
 
     // 分隔
-    ctx.setStrokeStyle('#e6ded2');
+    ctx.setStrokeStyle(P.line);
     ctx.setLineWidth(1);
     ctx.beginPath();
     ctx.moveTo(60, 240);
@@ -549,16 +558,16 @@ Page({
     ctx.setTextAlign('left');
     ctx.setFontSize(24);
     for (const [k, v] of rows) {
-      ctx.setFillStyle('#9c8f80');
+      ctx.setFillStyle(P.label);
       ctx.fillText(k, 48, y);
-      ctx.setFillStyle('#3b2f28');
+      ctx.setFillStyle(P.title);
       ctx.fillText(v, 200, y);
       y += 44;
     }
 
     // 五行（简单条）
     y += 8;
-    ctx.setFillStyle('#9c8f80');
+    ctx.setFillStyle(P.label);
     ctx.setFontSize(22);
     ctx.fillText('五行四柱字数', 48, y);
     y += 30;
@@ -566,14 +575,14 @@ Page({
       const trackW = W - 48 * 2;
       const unit = trackW / 5;
       r.tally.forEach((t) => {
-        ctx.setFillStyle('#3b2f28');
+        ctx.setFillStyle(P.title);
         ctx.setFontSize(20);
         ctx.fillText(t.name, 48, y + 14);
-        ctx.setFillStyle('#efe9de');
+        ctx.setFillStyle(P.fill);
         ctx.fillRect(100, y, unit * 4, 16);
-        ctx.setFillStyle('#12a173');
+        ctx.setFillStyle(P.bar);
         ctx.fillRect(100, y, unit * t.n, 16);
-        ctx.setFillStyle('#3b2f28');
+        ctx.setFillStyle(P.title);
         ctx.setFontSize(20);
         ctx.fillText(String(t.n), 100 + unit * 4 + 16, y + 14);
         y += 36;
@@ -581,7 +590,7 @@ Page({
     }
 
     ctx.setFontSize(20);
-    ctx.setFillStyle('#b0a69a');
+    ctx.setFillStyle(P.foot);
     ctx.setTextAlign('center');
     ctx.fillText('由真实天文历法计算 · 不含预测与判定', W / 2, H - 30);
     ctx.draw(false, () => {

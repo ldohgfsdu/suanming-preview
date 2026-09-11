@@ -54,6 +54,17 @@
 
 /* ---------- 表单 ---------- */
 .section-head { font-size: 24rpx; color: var(--muted); letter-spacing: 3rpx; margin-bottom: 28rpx; }
+.section-head-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28rpx;
+}
+.section-head-row .section-head { margin-bottom: 0; }
+.reset-today {
+  color: var(--accent); font-size: 24rpx; padding: 6rpx 16rpx;
+  border: 1rpx solid var(--line); border-radius: 26rpx;
+  transition: opacity 0.15s ease;
+}
+.reset-today:active { opacity: 0.55; }
 
 .mode-tabs { display: flex; margin-bottom: 28rpx; background: var(--tint); border-radius: 14rpx; padding: 6rpx; }
 .mode-tab {
@@ -204,6 +215,8 @@
 .kv .approx { font-size: 20rpx; color: var(--muted); margin-left: 8rpx; }
 .k { color: var(--muted); font-size: 25rpx; }
 .v { font-size: 28rpx; text-align: right; }
+.kv-life { border-bottom-color: transparent; }
+.kv-life .v-life { color: var(--accent); font-weight: 600; font-size: 30rpx; letter-spacing: 1rpx; }
 .divider { height: 1rpx; background: var(--line); margin: 24rpx 0; }
 
 .note { margin-top: 28rpx; color: var(--muted); font-size: 23rpx; line-height: 1.7; }

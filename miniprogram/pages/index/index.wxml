@@ -40,7 +40,10 @@
 
   <!-- 输入 -->
   <view class="card form-card">
-    <view class="section-head">出生档案</view>
+    <view class="section-head-row">
+      <view class="section-head">出生档案</view>
+      <view class="reset-today" bindtap="onResetToday">回到今天 ↺</view>
+    </view>
 
     <!-- 公历 / 农历 -->
     <view class="mode-tabs">
@@ -158,6 +161,7 @@
     <view class="kv"><text class="k">日柱纳音</text><text class="v">{{result.nayin}}</text></view>
     <view class="kv" wx:if="{{result.lunarText}}"><text class="k">农历</text><text class="v">{{result.lunarText}}<text wx:if="{{result.lunarApprox}}" class="approx">（朔日±1天）</text></text></view>
     <view class="kv"><text class="k">出生地点</text><text class="v">{{result.place}}</text></view>
+    <view class="kv kv-life" wx:if="{{result.since}}"><text class="k">时间岁月</text><text class="v v-life">{{result.since}}</text></view>
 
     <view class="divider"></view>
 

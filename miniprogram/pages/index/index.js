@@ -147,6 +147,14 @@ Page({
   switchSolarMode() {
     this.setData({ calMode: 'solar' });
   },
+  // 一键回到今天（公历/农历日期均重置，并清空当前结果）
+  onResetToday() {
+    const now = new Date();
+    const t = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    this.initSolar(t);
+    this.initLunarToToday(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    this.setData({ hasResult: false, result: null });
+  },
   switchLunarMode() {
     this.setData({ calMode: 'lunar' });
   },
@@ -452,6 +460,23 @@ Page({
         pct: Math.round((x.n / tallyMax) * 100),
       }));
       const term = f.term.next ? `${f.term.next.name} ${formatTime(f.term.next.utc)}` : '—';
+      // 「生命时间轴」：自出生日到今天已历多少年/天（纯日历，无歧义）。
+      let sinceLabel = '';
+      try {
+        const birth = new Date(y, m - 1, d);
+        const tdy = new Date();
+        tdy.setHours(0, 0, 0, 0);
+        const days = Math.round((tdy.getTime() - birth.getTime()) / 86400000);
+        if (!Number.isNaN(days) && days >= 0) {
+          const yrs = Math.floor(days / 365.2425);
+          const rem = days - Math.round(yrs * 365.2425);
+          if (rem <= 0) {
+            sinceLabel = `已 ${yrs} 年`;
+          } else {
+            sinceLabel = `已 ${yrs + 1} 岁 · 累计 ${days.toLocaleString()} 天`;
+          }
+        }
+      } catch (e) { /* 不影响主体 */ }
       this.setData({
         generating: false,
         hasResult: true,
@@ -472,6 +497,7 @@ Page({
           trueSolar: f.trueSolar.degraded
             ? '未提供位置'
             : `${f.trueSolar.offsetMinutes >= 0 ? '+' : ''}${Number(f.trueSolar.offsetMinutes).toFixed(1)} 分钟`,
+          since: sinceLabel,
         },
       });
       // 生成完成后滚动到“历法档案”结果，让用户立即看到得出内容。

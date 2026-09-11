@@ -1,0 +1,40 @@
+/* pages/about/about.wxss — 关于 / 免责声明 / 算法说明 页 */
+.page {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+.card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(44, 42, 38, 0.04);
+}
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2c2a26;
+  margin-bottom: 20rpx;
+}
+.card-body {
+  font-size: 26rpx;
+  color: #4a463f;
+  line-height: 1.8;
+}
+.card-body .gap { margin-top: 16rpx; }
+.strong {
+  font-weight: 600;
+  color: #9a6b4f;
+}
+.kv {
+  display: flex;
+  align-items: flex-start;
+  padding: 10rpx 0;
+  font-size: 26rpx;
+}
+.kv .k {
+  width: 180rpx;
+  color: #8b867c;
+  flex-shrink: 0;
+}
+.kv .v { color: #2c2a26; flex: 1; }

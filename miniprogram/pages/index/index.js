@@ -445,4 +445,9 @@ Page({
       showCancel: false,
     });
   },
+
+  // 打开“关于 / 免责声明“页面
+  goAbout() {
+    wx.navigateTo({ url: '/pages/about/about' });
+  },
 });

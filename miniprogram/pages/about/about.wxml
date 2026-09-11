@@ -1,0 +1,45 @@
+<view class="page">
+
+  <!-- 免责声明 -->
+  <view class="card">
+    <view class="card-title">免责声明</view>
+    <view class="card-body">
+      <view>本工具仅提供源自公开天文历书与历法学的客观数据查询及传统文化知识科普，包括干支、节气、五行分布、生肖纳音等历法信息。</view>
+      <view class="gap">本工具<text class="strong">不构成任何预测、命运判断、吉凶、运势或行为建议</text>。任何基于本工具数据的推断、联想或使用，均由使用者自行负责，开发者不承担由此产生的任何责任。</view>
+      <view class="gap">数据可能存在算法误差，实际历法信息请以权威天文机构发布为准。</view>
+    </view>
+  </view>
+
+  <!-- 算法依据 -->
+  <view class="card">
+    <view class="card-title">算法依据</view>
+    <view class="card-body">
+      <view class="kv"><text class="k">天体精度</text><text class="v">太阳视位置 / 节气时刻</text></view>
+      <view class="kv"><text class="k">计算标准</text><text class="v">公开天文历算方法（黄赤交角、均时差、真太阳时校正）</text></view>
+      <view class="kv"><text class="k">年界规则</text><text class="v">年柱以立春为界，月柱以节气为界</text></view>
+      <view class="kv"><text class="k">子时换日</text><text class="v">以真太阳时判定时辰与换日</text></view>
+      <view class="kv"><text class="k">支持范围</text><text class="v">公历 1900–2100 年</text></view>
+    </view>
+  </view>
+
+  <!-- 数据说明 -->
+  <view class="card">
+    <view class="card-title">数据与精度</view>
+    <view class="card-body">
+      <view>节气时刻由天文算法迭代求解至秒级；真太阳时根据出生地点经度与均时差校正。</view>
+      <view class="gap">本工具为纯历法计算工具，所有结果均可在「算法透明」层面交叉验证，不含商业化命理服务。</view>
+    </view>
+  </view>
+
+  <!-- 关于 -->
+  <view class="card">
+    <view class="card-title">关于</view>
+    <view class="card-body">
+      <view class="kv"><text class="k">名称</text><text class="v">东方时间文化档案</text></view>
+      <view class="kv"><text class="k">定位</text><text class="v">历法查询与文化科普</text></view>
+      <view class="kv"><text class="k">性质</text><text class="v">非营利 · 个人参赛作品</text></view>
+      <view class="kv"><text class="k">算法透明</text><text class="v">计算过程与口径公开，可复现</text></view>
+    </view>
+  </view>
+
+</view>

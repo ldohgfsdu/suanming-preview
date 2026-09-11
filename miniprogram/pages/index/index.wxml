@@ -170,4 +170,10 @@
     <view class="note">本档案均由真实天文历法计算得出，不含任何命运、吉凶或运气推算。</view>
   </view>
 
+  <!-- 关于 / 免责声明入口 -->
+  <view class="about-link" bindtap="goAbout">
+    <text>关于本工具 · 算法说明 · 免责声明</text>
+    <text class="about-arrow">›</text>
+  </view>
+
 </view>

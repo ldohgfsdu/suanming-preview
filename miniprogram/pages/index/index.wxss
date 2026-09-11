@@ -149,3 +149,11 @@
 .divider { height: 1rpx; background: var(--line); margin: 24rpx 0; }
 
 .note { margin-top: 28rpx; color: var(--muted); font-size: 23rpx; line-height: 1.7; }
+
+/* ---------- 关于入口 ---------- */
+.about-link {
+  display: flex; align-items: center; justify-content: center;
+  margin: 8rpx 0 24rpx; padding: 28rpx 0;
+  color: var(--muted); font-size: 26rpx; letter-spacing: 1rpx;
+}
+.about-arrow { margin-left: 10rpx; font-size: 30rpx; color: var(--muted); }

@@ -5,38 +5,133 @@
     <view class="hero-sub">基于真实天文历法计算的时间档案</view>
   </view>
 
+  <!-- 今日天时 -->
+  <view class="card today-card" wx:if="{{today}}">
+    <view class="today-head">
+      <view class="today-title">今日天时</view>
+      <view class="today-info" bindtap="onTodayInfo">ⓘ</view>
+    </view>
+    <view class="today-ganzhi">{{today.ganzhi}}</view>
+    <view class="today-grid">
+      <view class="t-cell">
+        <view class="t-k">节气</view>
+        <view class="t-v">{{today.termName}}</view>
+      </view>
+      <view class="t-cell">
+        <view class="t-k">日出</view>
+        <view class="t-v">{{today.sunrise}}</view>
+      </view>
+      <view class="t-cell">
+        <view class="t-k">日落</view>
+        <view class="t-v">{{today.sunset}}</view>
+      </view>
+      <view class="t-cell">
+        <view class="t-k">当前时间</view>
+        <view class="t-v">{{today.nowText}}</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 输入 -->
-  <view class="card">
-    <view class="row">
-      <view class="label">公历日期</view>
-      <picker class="picker" mode="date" start="1900-01-31" end="2100-12-31" value="{{date}}" bindchange="onDateChange">
-        <view class="picker-value">{{dateLabel || date}}</view>
-      </picker>
+  <view class="card form-card">
+    <view class="section-head">出生档案</view>
+
+    <!-- 公历 / 农历 -->
+    <view class="mode-tabs">
+      <view class="mode-tab {{calMode === 'solar' ? 'on' : ''}}" bindtap="switchSolarMode">公历</view>
+      <view class="mode-tab {{calMode === 'lunar' ? 'on' : ''}}" bindtap="switchLunarMode">农历</view>
     </view>
 
+    <block wx:if="{{calMode === 'solar'}}">
+      <view class="row">
+        <view class="label">公历日期</view>
+        <picker class="picker" mode="date" start="1901-01-01" end="2100-12-31" value="{{solarDate}}" bindchange="onSolarDateChange">
+          <view class="picker-value">{{solarDateLabel}}</view>
+        </picker>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="row">
+        <view class="label">农历日期</view>
+        <picker class="picker" mode="multiSelector"
+          range="{{[lunarYearList, lunarMonthLabels, lunarDayList]}}"
+          value="{{lunarValue}}"
+          bindcolumnchange="onLunarColumnChange"
+          bindchange="onLunarChange">
+          <view class="picker-value">{{lunarLabel}}</view>
+        </picker>
+      </view>
+    </block>
+
+    <!-- 时辰 -->
     <view class="row">
-      <view class="label">时辰</view>
-      <picker class="picker" mode="selector" range="{{['时辰未知','子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥']}}" bindchange="onHourChange">
+      <view class="label">出生时刻</view>
+      <picker class="picker" mode="selector" range="{{hourOptions}}" value="{{hourIdx}}" bindchange="onHourChange">
         <view class="picker-value">{{hourLabel}}</view>
       </picker>
     </view>
 
-    <view class="row">
-      <view class="label">所在经度（东经，可省）</view>
-      <input class="lon-input" type="digit" placeholder="如 116.4" value="{{lon}}" bindinput="onLonInput" placeholder-class="ph" />
+    <!-- 出生地点 -->
+    <view class="sub-head">
+      <text>出生地点</text>
+      <text class="why" bindtap="onWhyPlace">ⓘ</text>
     </view>
+    <picker class="place-line" mode="selector" range="{{provNames}}" value="{{provIdx}}" bindchange="onProvChange">
+      <view class="place-label">省 / 市 / 区</view>
+      <view class="place-value">{{provNames[provIdx]}}</view>
+      <view class="place-arrow">▾</view>
+    </picker>
+    <view class="place-links" wx:if="{{placeMode === 'province'}}">
+      <picker class="place-link" mode="selector" range="{{cityNames}}" value="{{cityIdx}}" bindchange="onCityChange">
+        <text>{{cityNames[cityIdx] || '选市'}}</text>
+        <text class="p-arrow">▾</text>
+      </picker>
+      <picker class="place-link" mode="selector" range="{{districtNames}}" value="{{districtIdx}}" bindchange="onDistrictChange" wx:if="{{districtNames.length > 0}}">
+        <text>{{districtNames[districtIdx] || '选区/县'}}</text>
+        <text class="p-arrow">▾</text>
+      </picker>
+    </view>
+    <view class="place-links" style="margin-top:20rpx" wx:else>
+      <picker class="place-link" mode="selector" range="{{districtNames}}" value="{{districtIdx}}" bindchange="onDistrictChange">
+        <text>{{districtNames[districtIdx] || '选区/县'}}</text>
+        <text class="p-arrow">▾</text>
+      </picker>
+    </view>
+    <view class="place-hint">{{placeHint}}</view>
 
-    <button class="btn" bindtap="onGenerate">生成档案</button>
+    <!-- 高级：手动经度 -->
+    <view class="advanced" wx:if="{{showAdvanced}}">
+      <view class="row">
+        <view class="label">手动输入经度（东经）</view>
+        <input class="lon-input" type="digit" placeholder="如 116.4" value="{{lonText}}" bindinput="onLongitudeInput" bindblur="onApplyLon" placeholder-class="ph" />
+      </view>
+    </view>
+    <view class="adv-link" bindtap="onToggleAdvanced">{{showAdvanced ? '收起高级设置 ▲' : '高级设置：手动输入经度 ▼'}}</view>
+
+    <button class="btn" bindtap="onGenerate" loading="{{generating}}" disabled="{{generating}}">生成档案</button>
+  </view>
+
+  <!-- 生成过渡 -->
+  <view class="gen-overlay" wx:if="{{generating}}">
+    <view class="gen-box">
+      <view class="gen-spinner"></view>
+      <view class="gen-step" wx:for="{{genSteps}}" wx:key="*this" wx:for-item="st" wx:for-index="si">
+        <view class="gen-line {{si <= genStepIndex ? 'done' : ''}} {{si === genStepIndex ? 'now' : ''}}">
+          <view class="gen-dot" wx:if="{{si <= genStepIndex}}"></view>
+          <text>{{st}}</text>
+        </view>
+      </view>
+    </view>
   </view>
 
   <!-- 结果 -->
   <view wx:if="{{hasResult}}" class="card result">
     <view class="result-head">
       <view class="result-title">历法档案</view>
-      <view class="result-meta">{{result.solar}}</view>
+      <view class="result-tag">天文历法</view>
     </view>
+    <view class="result-meta">{{result.solar}}</view>
 
-    <!-- 四柱 -->
     <view class="pillars">
       <view class="pillar" wx:for="{{result.pillars}}" wx:key="label">
         <view class="pillar-label">{{item.label}}柱</view>
@@ -46,10 +141,11 @@
     </view>
 
     <view class="kv"><text class="k">日柱纳音</text><text class="v">{{result.nayin}}</text></view>
+    <view class="kv" wx:if="{{result.lunarText}}"><text class="k">农历</text><text class="v">{{result.lunarText}}</text></view>
+    <view class="kv"><text class="k">出生地点</text><text class="v">{{result.place}}</text></view>
 
     <view class="divider"></view>
 
-    <!-- 五行字数 -->
     <view class="section-title">五行四柱字数</view>
     <view class="tally">
       <view class="tally-chip" wx:for="{{result.tally}}" wx:key="name">
@@ -60,7 +156,6 @@
 
     <view class="divider"></view>
 
-    <!-- 节气 -->
     <view class="section-title">节气</view>
     <view class="kv"><text class="k">上一个节气</text><text class="v">{{result.prevTerm}}</text></view>
     <view class="kv"><text class="k">下一个节气</text><text class="v">{{result.nextTerm}}</text></view>
@@ -68,12 +163,11 @@
 
     <view class="divider"></view>
 
-    <!-- 月相 / 真太阳时 -->
     <view class="section-title">月相与时间</view>
     <view class="kv"><text class="k">月相</text><text class="v">{{result.moon}}</text></view>
     <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{result.trueSolar}}</text></view>
 
-    <view class="note">本档案均由确定的天文历法计算得出，不含任何命运、吉凶或运气推算。</view>
+    <view class="note">本档案均由真实天文历法计算得出，不含任何命运、吉凶或运气推算。</view>
   </view>
 
 </view>

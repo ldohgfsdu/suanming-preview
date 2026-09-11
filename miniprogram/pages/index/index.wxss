@@ -161,7 +161,7 @@
 @keyframes fadein { from { opacity: 0; transform: translateY(6rpx); } to { opacity: 1; transform: none; } }
 
 /* ---------- 结果 ---------- */
-.result { scroll-margin-top: 24rpx; }
+.result { scroll-margin-top: 24rpx; animation: fadeInUp 0.45s ease both; }
 .result-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12rpx; }
 .result-title { font-size: 34rpx; font-weight: 600; }
 .result-tag { color: var(--accent); font-size: 22rpx; border: 1rpx solid var(--line); border-radius: 20rpx; padding: 4rpx 16rpx; }
@@ -207,4 +207,18 @@
   color: var(--muted); font-size: 26rpx; letter-spacing: 1rpx;
 }
 .about-arrow { margin-left: 10rpx; font-size: 30rpx; color: var(--muted); }
+
+/* ---------- 微交互：结果淡入 / 按键反馈 ---------- */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18rpx); }
+  to   { opacity: 1; transform: none; }
+}
+.picker-value, .place-value { transition: opacity 0.15s ease; }
+.picker:active .picker-value, .place-line:active .place-value { opacity: 0.55; }
+.row { transition: background 0.18s ease; }
+.row:active { background: var(--tint); }
+.today-more, .today-info, .why, .adv-link, .about-link { transition: opacity 0.15s ease; }
+.today-more:active, .today-info:active, .why:active, .adv-link:active, .about-link:active { opacity: 0.6; }
+.tally-fill { transition: width 0.5s ease; }
+.pillar { transition: transform 0.2s ease; }
 

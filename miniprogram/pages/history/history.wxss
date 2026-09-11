@@ -19,7 +19,7 @@
   padding: 0 56rpx;
   height: 88rpx;
   line-height: 88rpx;
-  background: var(--ink);
+  background: var(--btn);
   color: #fff;
   border-radius: 16rpx;
   font-size: 28rpx;
@@ -39,7 +39,7 @@
 
 /* 卡片 */
 .card {
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 20rpx;
   padding: 28rpx;

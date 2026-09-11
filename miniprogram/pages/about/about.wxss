@@ -4,7 +4,7 @@
   box-sizing: border-box;
 }
 .card {
-  background: #ffffff;
+  background: var(--card);
   border-radius: 20rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
@@ -13,18 +13,18 @@
 .card-title {
   font-size: 30rpx;
   font-weight: 600;
-  color: #2c2a26;
+  color: var(--ink);
   margin-bottom: 20rpx;
 }
 .card-body {
   font-size: 26rpx;
-  color: #4a463f;
+  color: var(--body);
   line-height: 1.8;
 }
 .card-body .gap { margin-top: 16rpx; }
 .strong {
   font-weight: 600;
-  color: #9a6b4f;
+  color: var(--accent);
 }
 .kv {
   display: flex;
@@ -34,7 +34,7 @@
 }
 .kv .k {
   width: 180rpx;
-  color: #8b867c;
+  color: var(--muted);
   flex-shrink: 0;
 }
-.kv .v { color: #2c2a26; flex: 1; }
+.kv .v { color: var(--ink); flex: 1; }

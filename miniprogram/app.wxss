@@ -1,11 +1,32 @@
 page {
   --paper: #f7f5f1;
+  --card: #ffffff;
+  --tint: #f2efe9;
   --ink: #2c2a26;
+  --body: #4a463f;
   --muted: #8b867c;
   --line: #e4e0d6;
   --accent: #9a6b4f;
+  --btn: #2c2a26;
+  --btn-text: #ffffff;
   background: var(--paper);
   color: var(--ink);
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
   font-size: 28rpx;
+}
+
+/* 深色模式：仅覆盖变量，全站配色跟随系统 */
+@media (prefers-color-scheme: dark) {
+  page {
+    --paper: #1a1815;
+    --card: #24211d;
+    --tint: #2c2924;
+    --ink: #ece8e0;
+    --body: #c8c2b8;
+    --muted: #8f8a80;
+    --line: #38342d;
+    --accent: #c08a63;
+    --btn: #2c2a26;
+    --btn-text: #ffffff;
+  }
 }

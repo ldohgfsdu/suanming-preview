@@ -1,0 +1,99 @@
+/* pages/terms/terms.wxss — 全年节气日历 */
+.page {
+  padding: 24rpx 32rpx 80rpx;
+  box-sizing: border-box;
+  max-width: 720rpx;
+  margin: 0 auto;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 20rpx;
+  padding: 26rpx 30rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+.year {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hint {
+  font-size: 24rpx;
+  color: var(--accent);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 18rpx;
+  padding: 24rpx 28rpx;
+  box-shadow: 0 6rpx 20rpx rgba(0, 0, 0, 0.04);
+}
+.badge {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 30rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+}
+.body {
+  flex: 1;
+}
+.name {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tip {
+  font-size: 22rpx;
+  color: var(--muted);
+  margin-top: 6rpx;
+}
+.right {
+  text-align: right;
+}
+.date {
+  font-size: 30rpx;
+  color: var(--ink);
+  font-weight: 500;
+}
+.time {
+  font-size: 22rpx;
+  color: var(--muted);
+  margin-top: 6rpx;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 26rpx;
+  padding: 60rpx 0;
+}
+
+.foot-note {
+  text-align: center;
+  font-size: 22rpx;
+  color: var(--muted);
+  margin-top: 32rpx;
+  line-height: 1.7;
+}

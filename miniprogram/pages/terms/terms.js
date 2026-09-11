@@ -10,10 +10,10 @@ const TERM_MO_REF = [
   '寒露(戌)', '霜降(戌)', '立冬(亥)', '小雪(亥)', '大雪(子)', '冬至(子)',
 ];
 const SEASON_GROUPS = [
-  { name: '春', ords: [2, 3, 4] },
-  { name: '夏', ords: [6, 7, 8] },
-  { name: '秋', ords: [10, 11, 12] },
-  { name: '冬', ords: [14, 15, 16] },
+  { name: '冬末·春', ords: [0, 1, 2, 3, 4, 5] },
+  { name: '春·夏', ords: [6, 7, 8, 9, 10, 11] },
+  { name: '夏·秋', ords: [12, 13, 14, 15, 16, 17] },
+  { name: '秋·冬', ords: [18, 19, 20, 21, 22, 23] },
 ];
 
 function pad2(n) { return String(n).padStart(2, '0'); }

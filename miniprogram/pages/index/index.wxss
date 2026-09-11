@@ -8,7 +8,7 @@
 .hero-sub { margin-top: 12rpx; color: var(--muted); font-size: 23rpx; letter-spacing: 1rpx; }
 
 .card {
-  background: #fff;
+  background: var(--card);
   border: 1rpx solid var(--line);
   border-radius: 24rpx;
   padding: 36rpx;
@@ -32,7 +32,7 @@
   margin-top: 28rpx;
   height: 88rpx;
   line-height: 88rpx;
-  background: #fff;
+  background: var(--card);
   color: var(--accent);
   border: 1rpx solid var(--accent);
   border-radius: 16rpx;
@@ -55,12 +55,12 @@
 /* ---------- 表单 ---------- */
 .section-head { font-size: 24rpx; color: var(--muted); letter-spacing: 3rpx; margin-bottom: 28rpx; }
 
-.mode-tabs { display: flex; margin-bottom: 28rpx; background: #f2efe9; border-radius: 14rpx; padding: 6rpx; }
+.mode-tabs { display: flex; margin-bottom: 28rpx; background: var(--tint); border-radius: 14rpx; padding: 6rpx; }
 .mode-tab {
   flex: 1; text-align: center; padding: 18rpx 0; border-radius: 11rpx;
   font-size: 28rpx; color: var(--muted); transition: all 0.2s;
 }
-.mode-tab.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06); }
+.mode-tab.on { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06); }
 
 .row {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -78,7 +78,7 @@
   border: 1rpx solid var(--line);
   color: var(--ink);
   font-size: 27rpx;
-  background: #fff;
+  background: var(--card);
   transition: all 0.15s;
 }
 .gender-opt.on {
@@ -99,7 +99,7 @@
 .place-line {
   margin-top: 18rpx;
   display: flex; align-items: center;
-  background: #f7f5f0; border: 1rpx solid var(--line); border-radius: 16rpx;
+  background: var(--tint); border: 1rpx solid var(--line); border-radius: 16rpx;
   padding: 26rpx 26rpx;
 }
 .place-label { font-size: 22rpx; color: var(--muted); margin-right: 20rpx; flex-shrink: 0; }
@@ -109,7 +109,7 @@
 .place-link {
   flex: 1;
   display: flex; align-items: center; justify-content: space-between;
-  background: #fff; border: 1rpx solid var(--line); border-radius: 14rpx;
+  background: var(--card); border: 1rpx solid var(--line); border-radius: 14rpx;
   padding: 20rpx 22rpx; font-size: 27rpx; color: var(--ink);
 }
 .place-link .p-arrow { color: var(--muted); font-size: 20rpx; margin-left: 8rpx; }
@@ -119,13 +119,13 @@
   flex: 1; text-align: right; font-size: 30rpx;
   border-bottom: 1rpx solid var(--line); padding: 4rpx 0;
 }
-.ph { color: #bdbdbd; font-size: 26rpx; }
+.ph { color: var(--muted); font-size: 26rpx; }
 
 .adv-link { margin: 20rpx 0 4rpx; color: var(--accent); font-size: 24rpx; text-align: center; letter-spacing: 1rpx; }
 
 .btn {
   margin-top: 36rpx;
-  background: var(--ink);
+  background: var(--btn);
   color: #fff;
   border-radius: 18rpx;
   font-size: 30rpx;
@@ -144,7 +144,7 @@
   display: flex; align-items: center; justify-content: center;
 }
 .gen-box {
-  background: #fff; border-radius: 24rpx; padding: 48rpx 56rpx;
+  background: var(--card); border-radius: 24rpx; padding: 48rpx 56rpx;
   min-width: 480rpx; box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.25);
 }
 .gen-spinner {
@@ -183,7 +183,7 @@
 .tally-name { width: 90rpx; font-size: 26rpx; flex-shrink: 0; }
 .tally-track {
   flex: 1; height: 18rpx; border-radius: 9rpx;
-  background: #efebe2; overflow: hidden;
+  background: var(--tint); overflow: hidden;
 }
 .tally-fill {
   height: 100%; border-radius: 9rpx;

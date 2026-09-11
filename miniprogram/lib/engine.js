@@ -30,8 +30,13 @@ function angDiff(a, b) { let d = mod360(a - b); if (d > 180) d -= 360; return d;
 function toRad(d) { return d * D2R; }
 
 // ---- date <-> JDN ----
+// ---- date <-> JDN ----
 export function gregorianToJde(y, m, d) {
   if (y < MIN_YEAR || y > MAX_YEAR) throw new Error('range ' + y);
+  return gregorianToJdeAny(y, m, d);
+}
+/** 无年份范围校验的 JDN 换算，仅供节气内部搜索越界一年时使用（不暴露为用户输入）。 */
+function gregorianToJdeAny(y, m, d) {
   const a = Math.floor((14 - m) / 12);
   const yy = y + 4800 - a;
   const mm = m + 12 * a - 3;
@@ -89,9 +94,10 @@ function solveLonWindow(target, lo, hi) {
   return (a + b) / 2;
 }
 
-/** JDE of a given term ord in a given Gregorian year (guess from approx month). */
+/** JDE of a given term ord in a given Gregorian year (guess from approx month).
+ * 内部允许年份上下越界一年（节气求解需要跨到用户合法范围外），不因此抛错。 */
 export function termJde(ord, year) {
-  const guess = gregorianToJde(year, TERM_REF_MONTH[ord], TERM_REF_DAY[ord]);
+  const guess = gregorianToJdeAny(year, TERM_REF_MONTH[ord], TERM_REF_DAY[ord]);
   const target = mod360(285 + ord * 15);
   return solveLonWindow(target, guess, guess);
 }

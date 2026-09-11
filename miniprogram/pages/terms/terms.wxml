@@ -1,0 +1,27 @@
+﻿<view class="page">
+
+  <!-- 年份选择 -->
+  <view class="head" bindtap="onYearTap">
+    <view class="year">{{year}} 年</view>
+    <view class="hint">点击切换年份 ▾</view>
+  </view>
+
+  <!-- 节气列表 -->
+  <view class="list" wx:if="{{rows.length}}">
+    <view class="card" wx:for="{{rows}}" wx:key="ord">
+      <view class="badge">{{item.monthRef}}</view>
+      <view class="body">
+        <view class="name">{{item.name}}</view>
+        <view class="tip">农历月参考</view>
+      </view>
+      <view class="right">
+        <view class="date">{{item.date}}</view>
+        <view class="time">周{{item.wcn}} · {{item.time}}</view>
+      </view>
+    </view>
+  </view>
+  <view wx:else class="empty">该年份暂不支持</view>
+
+  <view class="foot-note">以上时刻为北京时间（UTC+8），由太阳黄经 15° 整倍求解，供文化科普参考，不构成日期选择建议。</view>
+</view>
+

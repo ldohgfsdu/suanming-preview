@@ -20,6 +20,7 @@
 .today-info { color: var(--muted); font-size: 30rpx; padding: 4rpx 10rpx; }
 .today-tools { display: flex; align-items: center; gap: 8rpx; }
 .today-more { font-size: 24rpx; color: var(--accent); padding: 4rpx 8rpx; }
+.today-foot { margin-top: 20rpx; text-align: center; font-size: 24rpx; color: var(--accent); padding-top: 4rpx; }
 /* 分享画布：离屏不可见，但保持渲染能力 */
 .share-canvas { position: fixed; left: -9999px; top: 0; pointer-events: none; }
 
@@ -199,3 +200,4 @@
   color: var(--muted); font-size: 26rpx; letter-spacing: 1rpx;
 }
 .about-arrow { margin-left: 10rpx; font-size: 30rpx; color: var(--muted); }
+

@@ -101,6 +101,14 @@ Page({
     genText: '',
   },
 
+  // 分享：每次生成一份档案（首页）。
+  onShareAppMessage() {
+    return {
+      title: '东方时间文化档案 — 基于真实天文历法',
+      path: '/pages/index/index',
+    };
+  },
+
   onLoad() {
     const now = new Date();
     const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
@@ -601,6 +609,10 @@ Page({
 
   goToday() {
     wx.navigateTo({ url: '/pages/today/today' });
+  },
+
+  goTerms() {
+    wx.navigateTo({ url: '/pages/terms/terms' });
   },
 
   // 由今日页“以今日作为出生档案日期”回填

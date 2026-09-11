@@ -34,6 +34,8 @@
       </view>
     </view>
   </view>
+    <view class="today-foot" bindtap="goTerms">查看全年节气日历 ›</view>
+  </view>
 
   <!-- 输入 -->
   <view class="card form-card">

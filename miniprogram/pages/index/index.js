@@ -447,6 +447,117 @@ Page({
     }
   },
 
+  // ============ 分享卡片（canvas 导出） ============
+  onSaveCard() {
+    const r = this.data.result;
+    if (!r) { wx.showToast({ title: '请先生成档案', icon: 'none' }); return; }
+    const ctx = wx.createCanvasContext('shareCard', this);
+    const W = 600, H = 760;
+    // 背景
+    ctx.setFillStyle('#faf7f0');
+    ctx.fillRect(0, 0, W, H);
+    // 标题
+    ctx.setTextAlign('center');
+    ctx.setFillStyle('#3b2f28');
+    ctx.setFontSize(34);
+    ctx.fillText('东方时间文化档案', W / 2, 76);
+    ctx.setFillStyle('#9a6b4f');
+    ctx.setFontSize(22);
+    ctx.fillText(r.solar, W / 2, 112);
+
+    // 四柱
+    ctx.setFontSize(44);
+    ctx.setFillStyle('#3b2f28');
+    const pCount = r.pillars.length;
+    const colW = W / (pCount + 0.5);
+    r.pillars.forEach((p, i) => {
+      const x = colW * (i + 0.75);
+      ctx.fillText(p.ganz, x, 180);
+      ctx.setFontSize(20);
+      ctx.setFillStyle('#8a7a68');
+      ctx.fillText(`${p.label}柱 · ${p.element}`, x, 208);
+      ctx.setFontSize(44);
+      ctx.setFillStyle('#3b2f28');
+    });
+
+    // 分隔
+    ctx.setStrokeStyle('#e6ded2');
+    ctx.setLineWidth(1);
+    ctx.beginPath();
+    ctx.moveTo(60, 240);
+    ctx.lineTo(W - 60, 240);
+    ctx.stroke();
+
+    // 信息行
+    let y = 280;
+    const rows = [
+      ['日柱纳音', r.nayin],
+      ['农历', r.lunarText || '—'],
+      ['出生地点', r.place],
+      ['上一个节气', r.prevTerm],
+      ['下一个节气', r.nextTerm],
+      ['月相', r.moon],
+      ['真太阳时修正', r.trueSolar],
+    ];
+    ctx.setTextAlign('left');
+    ctx.setFontSize(24);
+    for (const [k, v] of rows) {
+      ctx.setFillStyle('#9c8f80');
+      ctx.fillText(k, 48, y);
+      ctx.setFillStyle('#3b2f28');
+      ctx.fillText(v, 200, y);
+      y += 44;
+    }
+
+    // 五行（简单条）
+    y += 8;
+    ctx.setFillStyle('#9c8f80');
+    ctx.setFontSize(22);
+    ctx.fillText('五行四柱字数', 48, y);
+    y += 30;
+    if (r.tally && r.tally.length) {
+      const trackW = W - 48 * 2;
+      const unit = trackW / 5;
+      r.tally.forEach((t) => {
+        ctx.setFillStyle('#3b2f28');
+        ctx.setFontSize(20);
+        ctx.fillText(t.name, 48, y + 14);
+        ctx.setFillStyle('#efe9de');
+        ctx.fillRect(100, y, unit * 4, 16);
+        ctx.setFillStyle('#12a173');
+        ctx.fillRect(100, y, unit * t.n, 16);
+        ctx.setFillStyle('#3b2f28');
+        ctx.setFontSize(20);
+        ctx.fillText(String(t.n), 100 + unit * 4 + 16, y + 14);
+        y += 36;
+      });
+    }
+
+    ctx.setFontSize(20);
+    ctx.setFillStyle('#b0a69a');
+    ctx.setTextAlign('center');
+    ctx.fillText('由真实天文历法计算 · 不含预测与判定', W / 2, H - 30);
+    ctx.draw(false, () => {
+      wx.canvasToTempFilePath({
+        canvasId: 'shareCard',
+        success: (res) => {
+          wx.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => wx.showToast({ title: '已保存到相册', icon: 'success' }),
+            fail: (e) => {
+              if (e && e.errMsg && e.errMsg.indexOf('auth') >= 0) {
+                wx.showModal({ title: '需要相册权限', content: '请授权保存图片到相册后重试', showCancel: false });
+              } else {
+                wx.showToast({ title: '保存失败', icon: 'none' });
+              }
+            },
+          });
+        },
+        fail: () => wx.showToast({ title: '生成卡片失败', icon: 'none' }),
+      });
+    });
+  },
+
   // ============ 说明 ============
   onWhyPlace() {
     wx.showModal({

@@ -183,6 +183,8 @@
     <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{result.trueSolar}}</text></view>
 
     <view class="note">本档案均由真实天文历法计算得出，不含任何预测、判定或运气换算。</view>
+
+    <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>
   </view>
 
   <!-- 关于 / 免责声明入口 -->
@@ -196,5 +198,8 @@
     <text>历史档案</text>
     <text class="about-arrow">›</text>
   </view>
+
+  <!-- 分享卡片画布（离屏） -->
+  <canvas class="share-canvas" canvas-id="shareCard" style="width:600px;height:760px;"></canvas>
 
 </view>

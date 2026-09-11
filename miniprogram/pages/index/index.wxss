@@ -1,4 +1,4 @@
-.page { padding: 48rpx 32rpx 80rpx; max-width: 720rpx; margin: 0 auto; display: flex; flex-direction: column; }
+﻿.page { padding: 48rpx 32rpx 80rpx; max-width: 720rpx; margin: 0 auto; display: flex; flex-direction: column; }
 
 .hero { padding: 8rpx 8rpx 48rpx; text-align: center; }
 .hero-title { font-size: 46rpx; font-weight: 600; letter-spacing: 4rpx; }
@@ -20,6 +20,22 @@
 .today-info { color: var(--muted); font-size: 30rpx; padding: 4rpx 10rpx; }
 .today-tools { display: flex; align-items: center; gap: 8rpx; }
 .today-more { font-size: 24rpx; color: var(--accent); padding: 4rpx 8rpx; }
+/* 分享画布：离屏不可见，但保持渲染能力 */
+.share-canvas { position: fixed; left: -9999px; top: 0; pointer-events: none; }
+
+/* 保存卡片按钮 */
+.btn-save {
+  margin-top: 28rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #fff;
+  color: var(--accent);
+  border: 1rpx solid var(--accent);
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  letter-spacing: 2rpx;
+}
+.btn-save::after { border: none; }
 .today-ganzhi {
   font-size: 44rpx; font-weight: 600; line-height: 1.4;
   letter-spacing: 3rpx; margin-bottom: 28rpx; color: var(--accent);

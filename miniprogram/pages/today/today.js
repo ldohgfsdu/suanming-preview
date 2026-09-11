@@ -1,7 +1,8 @@
 // pages/today/today.js — 今日天时独立页。
 // 展示当日完整的历法档案：四柱干支、农历、节气 bracket、月相月龄、日出日落、真太阳时、五行分布。
 // 全部为真实天文历法计算，纯展示，不含任何预测/判定内容。
-import { computeArchive, ELEMENT_NAME } from '../../lib/archive.js';
+import { computeArchive, ELEMENT_NAME, hourPillar } from '../../lib/archive.js';
+import { dayPillar, gregorianToJde } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { sunTimes } from '../../lib/sun.js';
 
@@ -21,6 +22,21 @@ function parseHM(hhmm) {
   const p = hhmm.split(':').map((n) => parseInt(n, 10));
   return p[0] * 60 + (p[1] || 0);
 }
+// 十二时辰（名 / 现代时间范围 / 中点 hour）
+const SHICHEN = [
+  { name: '子时', range: '23:00–01:00', hour: 0 },
+  { name: '丑时', range: '01:00–03:00', hour: 2 },
+  { name: '寅时', range: '03:00–05:00', hour: 4 },
+  { name: '卯时', range: '05:00–07:00', hour: 6 },
+  { name: '辰时', range: '07:00–09:00', hour: 8 },
+  { name: '巳时', range: '09:00–11:00', hour: 10 },
+  { name: '午时', range: '11:00–13:00', hour: 12 },
+  { name: '未时', range: '13:00–15:00', hour: 14 },
+  { name: '申时', range: '15:00–17:00', hour: 16 },
+  { name: '酉时', range: '17:00–19:00', hour: 18 },
+  { name: '戌时', range: '19:00–21:00', hour: 20 },
+  { name: '亥时', range: '21:00–23:00', hour: 22 },
+];
 
 Page({
   data: {
@@ -33,6 +49,7 @@ Page({
     term: { prev: '', next: '', days: '' },
     moon: { name: '', age: '' },
     sun: { sunrise: '', sunset: '', daylight: '' },
+    shichen: [],
     nowText: '',
     loading: true,
   },
@@ -65,6 +82,12 @@ Page({
       const daysToNext = f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(2) + ' 天' : '—';
       // 日出日落（默认北京经纬度）
       const sun = sunTimes(y, m, d, 116.4074, 39.9042);
+      // 今日十二时辰干支表（五鼠遁）
+      const dayStemIdx = dayPillar(gregorianToJde(y, m, d)).index % 10;
+      const shichen = SHICHEN.map((s) => {
+        const hp = hourPillar(dayStemIdx, s.hour);
+        return { name: s.name, range: s.range, ganz: hp.ganzhi };
+      });
       this.setData({
         loading: false,
         dateText: `${y}年${m}月${d}日`,
@@ -84,6 +107,7 @@ Page({
           daylight: sun.valid ? this.daylightText(sun.sunrise, sun.sunset) : '—',
         },
         moon: { phase: f.moon ? f.moon.name : '—', age: f.moon ? `${Number(f.moon.ageDays).toFixed(1)} 天` : '—' },
+        shichen,
       });
       this.refreshClock();
     } catch (e) {

@@ -54,3 +54,13 @@
 .btn-fill::after { border: none; }
 
 .foot-note { text-align: center; font-size: 22rpx; color: var(--muted); margin-top: 28rpx; }
+/* 今日时辰表 */
+.shichen-grid { display: flex; flex-wrap: wrap; }
+.sc-cell {
+  width: 33.33%; box-sizing: border-box;
+  padding: 14rpx 8rpx;
+}
+.sc-name { font-size: 24rpx; color: var(--muted); }
+.sc-ganz { font-size: 32rpx; font-weight: 700; margin-top: 4rpx; }
+.sc-range { font-size: 20rpx; color: var(--muted); margin-top: 2rpx; }
+.foot-sub { margin-top: 16rpx; font-size: 21rpx; color: var(--muted); line-height: 1.7; }

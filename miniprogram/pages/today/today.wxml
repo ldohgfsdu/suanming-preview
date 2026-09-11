@@ -63,6 +63,19 @@
     <view class="kv"><text class="k">五行四柱字数</text><text class="v">{{tally}}</text></view>
   </view>
 
+  <!-- 今日时辰表 -->
+  <view class="card" wx:if="{{shichen.length}}">
+    <view class="sec-title">今日时辰</view>
+    <view class="shichen-grid">
+      <view class="sc-cell" wx:for="{{shichen}}" wx:key="name">
+        <view class="sc-name">{{item.name}}</view>
+        <view class="sc-ganz">{{item.ganz}}</view>
+        <view class="sc-range">{{item.range}}</view>
+      </view>
+    </view>
+    <view class="foot-sub">时柱天干按「五鼠遁」由今日日柱推得。</view>
+  </view>
+
   <!-- 操作 -->
   <button class="btn-fill" bindtap="fillToday">以今日作为出生档案日期</button>
 

@@ -16,10 +16,5 @@
   "themeLocation": "theme.json",
   "style": "v2",
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents",
-  "permission": {
-    "scope.writePhotosAlbum": {
-      "desc": "用于将生成的档案卡片保存到相册"
-    }
-  }
+  "lazyCodeLoading": "requiredComponents"
 }

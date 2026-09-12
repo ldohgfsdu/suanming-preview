@@ -1,4 +1,4 @@
-﻿.page { padding: 48rpx 32rpx 80rpx; max-width: 720rpx; margin: 0 auto; display: flex; flex-direction: column; }
+.page { padding: 48rpx 32rpx 80rpx; max-width: 720rpx; margin: 0 auto; display: flex; flex-direction: column; }
 
 .hero {
   padding: 6rpx 8rpx 36rpx;

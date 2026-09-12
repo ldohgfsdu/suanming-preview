@@ -188,6 +188,11 @@
 
     <view class="section-title">月相与时间</view>
     <view class="kv"><text class="k">月相</text><text class="v">{{result.moon}}</text></view>
+    <view class="mv-bar" wx:if="{{result.moonLit}}">
+      <text class="mb-fill-tag">{{result.moonLit.filling}}</text>
+      <view class="mb-track"><view class="mb-fill" style="width:{{result.moonLit.litPct}}%"></view></view>
+      <text class="mb-pct">{{result.moonLit.litPct}}%（亮面）</text>
+    </view>
     <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{result.trueSolar}}</text></view>
 
     <view class="note">本档案均由真实天文历法计算得出，不含任何预测、判定或运气换算。</view>

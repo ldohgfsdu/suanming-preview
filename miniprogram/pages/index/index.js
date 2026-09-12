@@ -11,6 +11,13 @@ import { lunarToSolar, lunarMonthsOfYear, lunarDaysOfMonth } from '../../lib/lun
 import { sunTimes } from '../../lib/sun.js';
 
 function pad(n) { return String(n).padStart(2, '0'); }
+// 月相亮度比例（0=朔 … 1=望 … 0）及盈/亏方向，纯周期函数，用于小小的月亮示例条。
+function litMoon(age) {
+  if (age == null || !Number.isFinite(age)) return null;
+  const f = ((age % 29.530588861) + 29.530588861) % 29.530588861 / 29.530588861;
+  const lit = Math.sin(Math.PI * f) ** 2;
+  return { lit, litPct: Math.round(lit * 100), filling: f < 0.5 ? '盈' : '亏' };
+}
 const HISTORY_KEY = 'eastTime.history.v1';
 const MAX_HISTORY = 50;
 function fmtUTC(utc) {
@@ -494,6 +501,8 @@ Page({
           nextTerm: term,
           daysToNext: f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(2) + ' 天' : '—',
           moon: f.moon ? `${f.moon.name}（朔望月龄 ${Number(f.moon.ageDays).toFixed(1)} 天）` : '—',
+          moonPhase: f.moon ? f.moon.name : '',
+          moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
           trueSolar: f.trueSolar.degraded
             ? '未提供位置'
             : `${f.trueSolar.offsetMinutes >= 0 ? '+' : ''}${Number(f.trueSolar.offsetMinutes).toFixed(1)} 分钟`,

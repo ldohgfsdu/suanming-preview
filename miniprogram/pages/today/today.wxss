@@ -75,3 +75,13 @@
   line-height: 1.75;
   color: var(--ink);
 }
+
+/* 月相亮面条 */
+.mb-bar {
+  display: flex; align-items: center;
+  padding: 10rpx 0 4rpx; gap: 16rpx;
+}
+.mb-fill-tag { font-size: 22rpx; color: var(--accent); width: 40rpx; flex-shrink: 0; text-align: center; }
+.mb-track { flex: 1; height: 16rpx; border-radius: 8rpx; background: var(--tint); overflow: hidden; }
+.mb-fill { height: 100%; border-radius: 8rpx; background: linear-gradient(90deg, var(--accent), var(--btn)); }
+.mb-pct { font-size: 21rpx; color: var(--muted); flex-shrink: 0; }

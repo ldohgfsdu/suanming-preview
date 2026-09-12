@@ -12,6 +12,12 @@ const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', 
   '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
+function litMoon(age) {
+  if (age == null || !Number.isFinite(age)) return null;
+  const f = ((age % 29.530588861) + 29.530588861) % 29.530588861 / 29.530588861;
+  const lit = Math.sin(Math.PI * f) ** 2;
+  return { litPct: Math.round(lit * 100), filling: f < 0.5 ? '盈' : '亏' };
+}
 function formatUTC(utc) {
   if (!utc) return '—';
   const s = utc.slice(0, 16).replace('T', ' ');
@@ -146,7 +152,7 @@ Page({
           sunset: sun.valid ? sun.sunset : '—',
           daylight: sun.valid ? this.daylightText(sun.sunrise, sun.sunset) : '—',
         },
-        moon: { phase: f.moon ? f.moon.name : '—', age: f.moon ? `${Number(f.moon.ageDays).toFixed(1)} 天` : '—' },
+        moon: { phase: f.moon ? f.moon.name : '—', age: f.moon ? `${Number(f.moon.ageDays).toFixed(1)} 天` : '—', lit: f.moon ? litMoon(f.moon.ageDays) : null },
         shichen,
       });
       this.refreshClock();

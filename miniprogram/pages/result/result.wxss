@@ -20,6 +20,16 @@
 .pillar-label { color: var(--muted); font-size: 22rpx; margin-bottom: 10rpx; letter-spacing: 2rpx; }
 .pillar-ganzhi { font-size: 42rpx; font-weight: 600; line-height: 1.25; color: var(--ink); }
 .pillar-elem { margin-top: 10rpx; font-size: 22rpx; color: var(--accent); }
+.pillar.is-unknown .pillar-ganzhi { color: var(--muted); font-weight: 400; }
+.pillar.is-unknown .pillar-elem { color: var(--muted); }
+.hour-unknown-hint {
+  margin: -4rpx 0 16rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+  text-align: center;
+}
+.tally-row.is-empty .tally-fill { opacity: 0.25; }
+.tally-row.is-empty .tally-n { color: var(--muted); font-weight: 400; }
 
 .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 14rpx 0; border-bottom: 1rpx solid var(--line); }
 .kv .approx { font-size: 20rpx; color: var(--muted); margin-left: 8rpx; }

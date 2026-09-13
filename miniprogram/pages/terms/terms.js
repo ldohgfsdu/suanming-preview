@@ -1,7 +1,8 @@
 // pages/terms/terms.js — 全年节气历。
-// 展示指定公历年份的 24 个节气时刻（显示为北京时 UTC+8），按四季分组。
+// 展示指定公历年份的 24 个节气时刻（按设备本地时区显示），按四季分组。
 // 纯天文历法计算（Meeus 太阳视黄经求解），无任何预测/判定内容。
-import { termJde, jdeToGregorian, TERMS } from '../../lib/engine.js';
+import { termJde, isoUtc, TERMS } from '../../lib/engine.js';
+import { fmtTermLong } from '../../lib/display.js';
 
 const TERM_MO_REF = [
   '小寒(丑)', '大寒(丑)', '立春(寅)', '雨水(寅)', '惊蛰(卯)', '春分(卯)',
@@ -16,16 +17,6 @@ const SEASON_GROUPS = [
   { name: '秋·冬', ords: [18, 19, 20, 21, 22, 23] },
 ];
 
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-// JDE → 北京时间 (UTC+8) 字符串 "YYYY-MM-DD HH:MM"
-function beijing(jde) {
-  const g = jdeToGregorian(jde + 8 / 24);
-  const totalMin = g.h * 60;
-  const hh = Math.floor(totalMin / 60);
-  const mm = Math.round(totalMin % 60);
-  return `${g.y}-${pad2(g.m)}-${pad2(g.d)} ${pad2(hh)}:${pad2(mm)}`;
-}
 function weekCn(dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
   if (isNaN(d.getTime())) return '';
@@ -47,7 +38,7 @@ Page({
   },
   onShareAppMessage() {
     return {
-      title: `${this.data.year} 年 · 全年 24 节气时刻（北京时）`,
+      title: `${this.data.year} 年 · 全年 24 节气时刻（设备本地时区）`,
       path: `/pages/terms/terms?year=${this.data.year}`,
     };
   },
@@ -58,9 +49,12 @@ Page({
     for (const ord of SEASON_GROUPS.flatMap((s) => s.ords)) {
       try {
         const obj = termJde(ord, year);
-        const bj = beijing(obj);
-        const [y, m, d, hm] = [bj.slice(0, 4), bj.slice(5, 7), bj.slice(8, 10), bj.slice(11, 16)];
-        rows.push({ ord, name: TERMS[ord], monthRef: TERM_MO_REF[ord], date: `${y}-${m}-${d}`, time: hm, wcn: weekCn(`${y}-${m}-${d}`) });
+        const longStr = fmtTermLong(isoUtc(obj));
+        const hm = longStr.slice(11, 16);
+        const y = longStr.slice(0, 4);
+        const m = longStr.slice(5, 7);
+        const dd = longStr.slice(8, 10);
+        rows.push({ ord, name: TERMS[ord], monthRef: TERM_MO_REF[ord], date: `${y}-${m}-${dd}`, time: hm, wcn: weekCn(`${y}-${m}-${dd}`) });
       } catch (e) { /* 越界跳过 */ }
     }
     this.setData({ year, rows, loading: false });

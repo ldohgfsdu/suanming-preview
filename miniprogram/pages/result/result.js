@@ -14,7 +14,7 @@ Page({
       channel.on('archive', (payload) => {
         if (payload && payload.result) {
           this.setData({ r: payload.result, loaded: true });
-          wx.setNavigationBarTitle({ title: '历法档案 · ' + (payload.result.solar || '') });
+          wx.setNavigationBarTitle({ title: '历法档案' });
         }
       });
     }
@@ -61,7 +61,7 @@ Page({
       ctx.fillText(p.ganz, x, 180);
       ctx.setFontSize(20);
       ctx.setFillStyle(P.label);
-      ctx.fillText(`${p.label}柱 · ${p.element}`, x, 208);
+      ctx.fillText(`${p.label} · ${(p.element || '时辰未知')}`, x, 208);
       ctx.setFontSize(44);
       ctx.setFillStyle(P.title);
     });
@@ -80,7 +80,7 @@ Page({
       ['出生地点', r.place],
       ['上一个节气', r.prevTerm],
       ['下一个节气', r.nextTerm],
-      ['月相', r.moon],
+      ['月相', (r.moonPhase || '—') + (r.moonAge ? `（朔望月龄 ${r.moonAge}）` : '')],
       ['真太阳时修正', r.trueSolar],
     ];
     ctx.setTextAlign('left');

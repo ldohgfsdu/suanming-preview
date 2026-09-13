@@ -9,6 +9,7 @@ import { solarToLunar } from '../../lib/lunar.js';
 import { PROVINCE_NAMES, cityNames, districtNames, locateProvinceCity } from '../../lib/place.js';
 import { lunarToSolar, lunarMonthsOfYear, lunarDaysOfMonth } from '../../lib/lunarReverse.js';
 import { sunTimes } from '../../lib/sun.js';
+import { fmtTermDate, fmtDaysLeft, fmtTermLong, fmtDaysLeftTechnical, fmtAgeDays, fmtTrueSolarMinutes, fmtLng } from '../../lib/display.js';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 // 月相亮度比例（0=朔 … 1=望 … 0）及盈/亏方向，纯周期函数，用于小小的月亮示例条。
@@ -20,24 +21,6 @@ function litMoon(age) {
 }
 const HISTORY_KEY = 'eastTime.history.v1';
 const MAX_HISTORY = 50;
-function fmtUTC(utc) {
-  if (!utc) return '—';
-  const s = utc.slice(0, 16).replace('T', ' ');
-  return s + ' (UTC)';
-}
-function formatTime(utc) { return fmtUTC(utc); }
-
-// 距某节气剩余时间，返回「X天X小时」／「不足1小时」
-function fmtDaysLeft(days) {
-  if (days == null || !isFinite(days)) return '';
-  if (days <= 0.001) return '已到';
-  const totalH = days * 24;
-  const hh = Math.floor(totalH);
-  const mm = Math.round((totalH - hh) * 60);
-  if (hh <= 0) return `${mm} 分钟`;
-  if (hh < 24) return `${hh} 小时 ${mm} 分`;
-  return `${Math.floor(hh / 24)} 天 ${pad(hh % 24)} 时`;
-}
 
 // 十二时辰：现代时间范围（传统名称主、现代时间副）。内部 hour 为中点（子=0）。
 const SHICHEN = [
@@ -414,16 +397,16 @@ Page({
       this.setData({
         today: {
           ganzhi,
+          dateText: `${y}年${m}月${d}日`,
           termName: term ? term.name : '—',
-          termDate: term ? term.utc.slice(0, 16).replace('T', ' ') : '',
-          termApprox: term ? formatTime(term.utc) : '',
+          termLong: term ? fmtTermLong(term.utc) : '',
+          termDate: term ? fmtTermDate(term.utc) : '',
           sunrise: sun.valid ? sun.sunrise : '—',
           sunset: sun.valid ? sun.sunset : '—',
           moon: f.moon ? f.moon.name : '—',
-          moonAge: f.moon ? Number(f.moon.ageDays).toFixed(1) : '',
-          daysToNext: f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(1) : '',
+          moonAge: f.moon ? fmtAgeDays(f.moon.ageDays) : '',
+          daysToNext: f.term.daysToNext != null ? fmtDaysLeftTechnical(f.term.daysToNext) : '—',
           termTime: fmtDaysLeft(f.term.daysToNext),
-          dateText: `${y}年${m}月${d}日`,
         },
       });
       this.refreshClock();
@@ -457,77 +440,62 @@ Page({
     return (parts[0] && parts[1] && parts[2]) ? { y: parts[0], m: parts[1], d: parts[2], lunarText: '' } : null;
   },
   onGenerate() {
+    // 真实计算为同步且快速；不人为加延迟/伪进度，直接进入数字档案页。
     if (this.data.generating) return;
     const input = this.resolveDateInput();
-    if (!input) { wx.showToast({ title: '请检查日期', icon: 'none' }); return; }
-    const steps = this.data.genSteps;
-    this.setData({ generating: true, genStepIndex: -1 });
-    let i = 0;
-    const run = () => {
-      if (i >= steps.length) { this.commitResult(input); return; }
-      this.setData({ genStepIndex: i, genText: steps[i] });
-      i++;
-      this._genTimer = setTimeout(run, 400);
-    };
-    run();
+    if (!input) { wx.showToast({ title: '请检查出生日期', icon: 'none' }); return; }
+    this.setData({ generating: true });
+    try {
+      this.commitResult(input);
+    } finally {
+      this.setData({ generating: false });
+    }
   },
   commitResult(input) {
     const lon = this.finalizeLon();
     const { y, m, d } = input;
     try {
       const f = computeArchive(y, m, d, this.data.hour, lon);
-      const pillars = ['year', 'month', 'day', 'hour']
-        .filter((k) => f.four[k])
-        .map((k) => ({ label: f.four[k].label, ganz: f.four[k].ganz, element: ELEM_NAME[f.four[k].element] }));
-      const tallyRaw = ['wood', 'fire', 'earth', 'metal', 'water']
-        .map((k) => ({ name: ELEM_NAME[k], n: (f.tally[k] || 0) }))
-        .filter((x) => x.n > 0);
+      // 四柱固定为 4 列：年/月/日/时。时辰未知时，时柱以弱化的“— / 时辰未知”占位。
+      const hourP = f.four.hour;
+      const pillars = [
+        { key: 'year', label: '年柱', ganz: f.four.year ? f.four.year.ganz : '—', element: f.four.year ? ELEM_NAME[f.four.year.element] : '' },
+        { key: 'month', label: '月柱', ganz: f.four.month ? f.four.month.ganz : '—', element: f.four.month ? ELEM_NAME[f.four.month.element] : '' },
+        { key: 'day', label: '日柱', ganz: f.four.day ? f.four.day.ganz : '—', element: f.four.day ? ELEM_NAME[f.four.day.element] : '' },
+        { key: 'hour', label: '时柱', ganz: hourP ? hourP.ganz : '—', element: hourP ? ELEM_NAME[hourP.element] : '', unknown: !hourP },
+      ];
+      // 五行分布固定为 5 行：木火土金水，0 值也展示（弱化）。
+      const tallyOrder = ['wood', 'fire', 'earth', 'metal', 'water'];
+      const tallyRaw = tallyOrder.map((k) => ({ key: k, name: ELEM_NAME[k], n: (f.tally[k] || 0) }));
       const tallyMax = Math.max(1, ...tallyRaw.map((x) => x.n));
       const tally = tallyRaw.map((x) => ({
         ...x,
         pct: Math.round((x.n / tallyMax) * 100),
+        empty: x.n === 0,
       }));
-      const term = f.term.next ? `${f.term.next.name} ${formatTime(f.term.next.utc)}` : '—';
-      // 「生命时间轴」：自出生日到今天已历多少年/天（纯日历，无歧义）。
-      let sinceLabel = '';
-      try {
-        const birth = new Date(y, m - 1, d);
-        const tdy = new Date();
-        tdy.setHours(0, 0, 0, 0);
-        const days = Math.round((tdy.getTime() - birth.getTime()) / 86400000);
-        if (!Number.isNaN(days) && days >= 0) {
-          const yrs = Math.floor(days / 365.2425);
-          const rem = days - Math.round(yrs * 365.2425);
-          if (rem <= 0) {
-            sinceLabel = `已 ${yrs} 年`;
-          } else {
-            sinceLabel = `已 ${yrs + 1} 岁 · 累计 ${days.toLocaleString()} 天`;
-          }
-        }
-      } catch (e) { /* 不影响主体 */ }
+      const termNow = f.term.next ? `${f.term.next.name} ${fmtTermDate(f.term.next.utc)}` : '—';
       const result = {
         solar: `${y}-${pad(m)}-${pad(d)}`,
         gender: this.data.gender,
         lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
         lunarApprox: f.lunar ? !!f.lunar.approx : false,
-        place: lon != null ? `${this.data.placeLabel} · 东经 ${lon}°` : '请选择出生地点（跳过真太阳时）',
+        place: lon != null
+          ? (this.data.lonActive ? this.data.placeLabel : `${this.data.placeLabel} · ${fmtLng(lon)}`)
+          : '请选择出生地点（跳过真太阳时修正）',
         pillars,
+        hourUnknown: !hourP,
         nayin: f.nayin,
-        hourLabel2: this.data.hour >= 0 ? this.data.hourLabel : '时辰未知',
         tally,
-        prevTerm: f.term.prev ? `${f.term.prev.name} ${formatTime(f.term.prev.utc)}` : '—',
-        nextTerm: term,
-        daysToNext: f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(2) + ' 天' : '—',
-        moon: f.moon ? `${f.moon.name}（朔望月龄 ${Number(f.moon.ageDays).toFixed(1)} 天）` : '—',
+        prevTerm: f.term.prev ? `${f.term.prev.name} ${fmtTermDate(f.term.prev.utc)}` : '—',
+        nextTerm: termNow,
+        daysToNext: f.term.daysToNext != null ? fmtDaysLeft(f.term.daysToNext) : '—',
         moonPhase: f.moon ? f.moon.name : '',
+        moonAge: f.moon ? fmtAgeDays(f.moon.ageDays) : '',
         moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
-        trueSolar: f.trueSolar.degraded
-          ? '未提供地点'
-          : `${f.trueSolar.offsetMinutes >= 0 ? '+' : ''}${Number(f.trueSolar.offsetMinutes).toFixed(1)} 分钟`,
-        since: sinceLabel,
+        trueSolar: f.trueSolar.degraded ? '未提供地点' : fmtTrueSolarMinutes(f.trueSolar.offsetMinutes),
+        hourLabel2: this.data.hour >= 0 ? this.data.hourLabel : '时辰未知',
       };
-      // 生成结果改为跳转到独立「历法档案」页，并在返回时可继续修改参数。
-      this.setData({ generating: false });
+      // 生成结果新到独立「历法档案」页；返回后可继续修改参数。
       this.saveHistory(f, input, lon);
       wx.navigateTo({
         url: '/pages/result/result',
@@ -536,7 +504,6 @@ Page({
         },
       });
     } catch (err) {
-      this.setData({ generating: false, genStepIndex: -1 });
       wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' });
     }
   },
@@ -545,7 +512,7 @@ Page({
   onWhyPlace() {
     wx.showModal({
       title: '为什么需要出生地点？',
-      content: '由于不同经度地区太阳运行时间存在差异，系统根据出生地点修正地方太阳时，用于提高时间计算的准确性。',
+      content: '不同经度地区的太阳运行时间存在差异。系统按出生地经度，结合均时差（EoT）与经度时差（±4 分钟/度，相对东经 120°）计算真太阳时，用于校准地方太阳时。',
       showCancel: false,
       confirmText: '知道了',
     });

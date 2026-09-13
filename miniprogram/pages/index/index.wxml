@@ -3,7 +3,6 @@
   <view class="hero">
     <view class="hero-title">东方时间文化档案</view>
     <view class="hero-sub">基于真实天文历法计算的时间档案</view>
-    <view class="hero-date" wx:if="{{today.dateText}}">{{today.dateText}} · {{today.ganzhi}}</view>
   </view>
 
   <!-- 今日天时 -->
@@ -15,6 +14,7 @@
         <view class="today-more" bindtap="goToday">详情 ›</view>
       </view>
     </view>
+    <view class="today-date" wx:if="{{today.dateText}}">{{today.dateText}}</view>
     <view class="today-ganzhi">{{today.ganzhi}}</view>
     <view class="today-grid">
       <view class="t-cell">
@@ -128,20 +128,7 @@
     <view class="adv-link" bindtap="onToggleAdvanced">{{showAdvanced ? '收起高级设置 ▲' : '高级设置：手动输入经度 ▼'}}</view>
 
     <button class="btn" bindtap="onGenerate" loading="{{generating}}" disabled="{{generating}}">生成档案</button>
-    <view class="btn-sub">档案将在一新页面中展示，回到首页可继续调整参数</view>
-  </view>
-
-  <!-- 生成过渡 -->
-  <view class="gen-overlay" wx:if="{{generating}}">
-    <view class="gen-box">
-      <view class="gen-spinner"></view>
-      <view class="gen-step" wx:for="{{genSteps}}" wx:key="*this" wx:for-item="st" wx:for-index="si">
-        <view class="gen-line {{si <= genStepIndex ? 'done' : ''}} {{si === genStepIndex ? 'now' : ''}}">
-          <view class="gen-dot" wx:if="{{si <= genStepIndex}}"></view>
-          <text>{{st}}</text>
-        </view>
-      </view>
-    </view>
+    <view class="btn-sub">档案将在独立页面中展示，返回首页可继续调整参数</view>
   </view>
 
   <!-- 说明 / 历史 入口 -->

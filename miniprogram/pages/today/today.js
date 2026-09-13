@@ -5,6 +5,7 @@ import { computeArchive, ELEMENT_NAME, hourPillar } from '../../lib/archive.js';
 import { dayPillar, gregorianToJde } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { sunTimes } from '../../lib/sun.js';
+import { fmtTermDate, fmtDaysLeft, fmtDaysLeftTechnical } from '../../lib/display.js';
 
 const MONTH_CN = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
 const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
@@ -17,11 +18,6 @@ function litMoon(age) {
   const f = ((age % 29.530588861) + 29.530588861) % 29.530588861 / 29.530588861;
   const lit = Math.sin(Math.PI * f) ** 2;
   return { litPct: Math.round(lit * 100), filling: f < 0.5 ? '盈' : '亏' };
-}
-function formatUTC(utc) {
-  if (!utc) return '—';
-  const s = utc.slice(0, 16).replace('T', ' ');
-  return `${s} UTC`;
 }
 function dayCn(d) { return DAY_CN[d] || String(d); }
 function parseHM(hhmm) {
@@ -122,9 +118,9 @@ Page({
         .map((k) => ({ name: ELEMENT_NAME[k], n: (f.tally[k] || 0) }))
         .filter((x) => x.n > 0);
       // 节气
-      const prev = f.term.prev ? `${f.term.prev.name} ${formatUTC(f.term.prev.utc)}` : '—';
-      const next = f.term.next ? `${f.term.next.name} ${formatUTC(f.term.next.utc)}` : '—';
-      const daysToNext = f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(2) + ' 天' : '—';
+      const prev = f.term.prev ? `${f.term.prev.name} ${fmtTermDate(f.term.prev.utc)}` : '—';
+      const next = f.term.next ? `${f.term.next.name} ${fmtTermDate(f.term.next.utc)}` : '—';
+      const daysToNext = f.term.daysToNext != null ? fmtDaysLeft(f.term.daysToNext) : '—';
       // 日出日落（默认北京经纬度）
       const sun = sunTimes(y, m, d, 116.4074, 39.9042);
       // 今日十二时辰干支表（五鼠遁）

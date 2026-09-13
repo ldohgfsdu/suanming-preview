@@ -8,23 +8,23 @@
   <view class="result-meta" wx:if="{{r.solar}}">{{r.solar}}</view>
 
   <view class="pillars" wx:if="{{r.pillars && r.pillars.length}}">
-    <view class="pillar" wx:for="{{r.pillars}}" wx:key="label">
+    <view class="pillar {{item.unknown ? 'is-unknown' : ''}}" wx:for="{{r.pillars}}" wx:key="label">
       <view class="pillar-label">{{item.label}}柱</view>
       <view class="pillar-ganzhi">{{item.ganz}}</view>
-      <view class="pillar-elem">{{item.element}}</view>
+      <view class="pillar-elem">{{item.element || '时辰未知'}}</view>
     </view>
   </view>
+  <view class="hour-unknown-hint" wx:if="{{r.hourUnknown}}">出生时刻未选择，时柱以「时辰未知」占位。</view>
 
   <view class="kv"><text class="k">日柱纳音</text><text class="v">{{r.nayin}}</text></view>
   <view class="kv" wx:if="{{r.lunarText}}"><text class="k">农历</text><text class="v">{{r.lunarText}}<text wx:if="{{r.lunarApprox}}" class="approx">（朔日前后±1天）</text></text></view>
   <view class="kv"><text class="k">出生地点</text><text class="v">{{r.place}}</text></view>
-  <view class="kv kv-life" wx:if="{{r.since}}"><text class="k">时间岁月</text><text class="v v-life">{{r.since}}</text></view>
 
   <view class="divider"></view>
 
   <view class="section-title">五行四柱字数</view>
   <view class="tally" wx:if="{{r.tally && r.tally.length}}">
-    <view class="tally-row" wx:for="{{r.tally}}" wx:key="name">
+    <view class="tally-row {{item.empty ? 'is-empty' : ''}}" wx:for="{{r.tally}}" wx:key="name">
       <view class="tally-name">{{item.name}}</view>
       <view class="tally-track">
         <view class="tally-fill" style="width:{{item.pct}}%"></view>
@@ -43,8 +43,9 @@
 
   <view class="divider"></view>
 
-  <view class="section-title">月相与时间</view>
-  <view class="kv"><text class="k">月相</text><text class="v">{{r.moon}}</text></view>
+  <view class="section-title">月相</view>
+  <view class="kv"><text class="k">月相</text><text class="v">{{r.moonPhase || '—'}}</text></view>
+  <view class="kv"><text class="k">朔望月龄</text><text class="v">{{r.moonAge || '—'}}</text></view>
   <view class="mv-bar" wx:if="{{r.moonLit}}">
     <text class="mb-fill-tag">{{r.moonLit.filling}}</text>
     <view class="mb-track"><view class="mb-fill" style="width:{{r.moonLit.litPct}}%"></view></view>

@@ -22,6 +22,6 @@
   </view>
   <view wx:else class="empty">该年份暂不支持</view>
 
-  <view class="foot-note">以上时刻为北京时间（UTC+8），由太阳黄经 15° 整倍求解，供文化科普参考，不构成日期选择建议。</view>
+  <view class="foot-note">以上时刻按设备本地时区显示，由太阳黄经 15° 整倍求解，供文化科普参考，不构成日期选择建议。</view>
 </view>
 

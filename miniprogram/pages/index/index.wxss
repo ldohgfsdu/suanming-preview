@@ -6,6 +6,7 @@
 }
 .hero-title { font-size: 44rpx; font-weight: 600; letter-spacing: 4rpx; }
 .hero-sub { margin-top: 12rpx; color: var(--muted); font-size: 23rpx; letter-spacing: 1rpx; }
+.hero-date { margin-top: 22rpx; color: var(--accent); font-size: 24rpx; letter-spacing: 2rpx; }
 
 .card {
   background: var(--card);
@@ -155,6 +156,7 @@
 }
 .btn::after { border: none; }
 .btn:active, .btn-pressed { transform: scale(0.98); opacity: 0.9; }
+.btn-sub { margin-top: 16rpx; text-align: center; color: var(--muted); font-size: 22rpx; letter-spacing: 1rpx; }
 
 /* ---------- 生成过渡 ---------- */
 .gen-overlay {
@@ -229,13 +231,26 @@
 
 .note { margin-top: 28rpx; color: var(--muted); font-size: 23rpx; line-height: 1.7; }
 
-/* ---------- 关于入口 ---------- */
+/* ---------- 关于/历史 入口与页脚 ---------- */
 .about-link {
-  display: flex; align-items: center; justify-content: center;
-  margin: 8rpx 0 24rpx; padding: 28rpx 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 26rpx 8rpx;
   color: var(--muted); font-size: 26rpx; letter-spacing: 1rpx;
 }
 .about-arrow { margin-left: 10rpx; font-size: 30rpx; color: var(--muted); }
+.foot-links {
+  margin-top: 28rpx;
+  border-top: 1rpx solid var(--line);
+  border-bottom: 1rpx solid var(--line);
+  padding: 6rpx 0;
+}
+.foot-note {
+  margin-top: 30rpx;
+  text-align: center;
+  color: var(--muted);
+  font-size: 21rpx;
+  letter-spacing: 2rpx;
+}
 
 /* ---------- 微交互：结果淡入 / 按键反馈 ---------- */
 @keyframes fadeInUp {

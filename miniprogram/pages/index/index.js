@@ -505,169 +505,40 @@ Page({
           }
         }
       } catch (e) { /* 不影响主体 */ }
-      this.setData({
-        generating: false,
-        hasResult: true,
-        result: {
-          solar: `${y}-${pad(m)}-${pad(d)}`,
-          gender: this.data.gender,
-          lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
-          lunarApprox: f.lunar ? !!f.lunar.approx : false,
-          place: lon != null ? `${this.data.placeLabel} · 东经 ${lon}°` : '未选择出生地（跳过真太阳时）',
-          pillars,
-          nayin: f.nayin,
-          hourLabel2: this.data.hour >= 0 ? this.data.hourLabel : '时辰未知',
-          tally,
-          prevTerm: f.term.prev ? `${f.term.prev.name} ${formatTime(f.term.prev.utc)}` : '—',
-          nextTerm: term,
-          daysToNext: f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(2) + ' 天' : '—',
-          moon: f.moon ? `${f.moon.name}（朔望月龄 ${Number(f.moon.ageDays).toFixed(1)} 天）` : '—',
-          moonPhase: f.moon ? f.moon.name : '',
-          moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
-          trueSolar: f.trueSolar.degraded
-            ? '未提供位置'
-            : `${f.trueSolar.offsetMinutes >= 0 ? '+' : ''}${Number(f.trueSolar.offsetMinutes).toFixed(1)} 分钟`,
-          since: sinceLabel,
+      const result = {
+        solar: `${y}-${pad(m)}-${pad(d)}`,
+        gender: this.data.gender,
+        lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
+        lunarApprox: f.lunar ? !!f.lunar.approx : false,
+        place: lon != null ? `${this.data.placeLabel} · 东经 ${lon}°` : '请选择出生地点（跳过真太阳时）',
+        pillars,
+        nayin: f.nayin,
+        hourLabel2: this.data.hour >= 0 ? this.data.hourLabel : '时辰未知',
+        tally,
+        prevTerm: f.term.prev ? `${f.term.prev.name} ${formatTime(f.term.prev.utc)}` : '—',
+        nextTerm: term,
+        daysToNext: f.term.daysToNext != null ? Number(f.term.daysToNext).toFixed(2) + ' 天' : '—',
+        moon: f.moon ? `${f.moon.name}（朔望月龄 ${Number(f.moon.ageDays).toFixed(1)} 天）` : '—',
+        moonPhase: f.moon ? f.moon.name : '',
+        moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
+        trueSolar: f.trueSolar.degraded
+          ? '未提供地点'
+          : `${f.trueSolar.offsetMinutes >= 0 ? '+' : ''}${Number(f.trueSolar.offsetMinutes).toFixed(1)} 分钟`,
+        since: sinceLabel,
+      };
+      // 生成结果改为跳转到独立「历法档案」页，并在返回时可继续修改参数。
+      this.setData({ generating: false });
+      this.saveHistory(f, input, lon);
+      wx.navigateTo({
+        url: '/pages/result/result',
+        success: (res) => {
+          if (res && res.eventChannel) res.eventChannel.emit('archive', { result });
         },
       });
-      // 生成完成后滚动到“历法档案”结果，让用户立即看到得出内容。
-      setTimeout(() => this.scrollToResult(), 120);
-      this.saveHistory(f, input, lon);
     } catch (err) {
       this.setData({ generating: false, genStepIndex: -1 });
       wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' });
     }
-  },
-
-  // ============ 滚动到结果 ============
-  scrollToResult() {
-    wx.createSelectorQuery()
-      .select('.result')
-      .boundingClientRect((rect) => {
-        if (!rect || rect.top == null) return;
-        wx.pageScrollTo({ scrollTop: Math.max(0, rect.top - 20), duration: 400 });
-      })
-      .exec();
-  },
-
-  // ============ 分享卡片（canvas 导出） ============
-  onSaveCard() {
-    const r = this.data.result;
-    if (!r) { wx.showToast({ title: '请先生成档案', icon: 'none' }); return; }
-    const ctx = wx.createCanvasContext('shareCard', this);
-    const W = 600, H = 760;
-    // 位图不随 CSS 变量变化：按系统深/浅主题选一套固定配色，保证海报两态观感一致。
-    const dark = (wx.getSystemInfoSync && wx.getSystemInfoSync().theme) === 'dark';
-    const P = dark ? {
-      bg: '#27241f', title: '#ede7df', sub: '#c89a6a', label: '#a99e8e',
-      line: '#3a3630', fill: '#38332a', bar: '#2f9e78', foot: '#726d63',
-    } : {
-      bg: '#faf7f0', title: '#3b2f28', sub: '#9a6b4f', label: '#9c8f80',
-      line: '#e6ded2', fill: '#efe9de', bar: '#12a173', foot: '#b0a69a',
-    };
-    // 背景
-    ctx.setFillStyle(P.bg);
-    ctx.fillRect(0, 0, W, H);
-    // 标题
-    ctx.setTextAlign('center');
-    ctx.setFillStyle(P.title);
-    ctx.setFontSize(34);
-    ctx.fillText('东方时间文化档案', W / 2, 76);
-    ctx.setFillStyle(P.sub);
-    ctx.setFontSize(22);
-    ctx.fillText(r.solar, W / 2, 112);
-
-    // 四柱
-    ctx.setFontSize(44);
-    ctx.setFillStyle(P.title);
-    const pCount = r.pillars.length;
-    const colW = W / (pCount + 0.5);
-    r.pillars.forEach((p, i) => {
-      const x = colW * (i + 0.75);
-      ctx.fillText(p.ganz, x, 180);
-      ctx.setFontSize(20);
-      ctx.setFillStyle(P.label);
-      ctx.fillText(`${p.label}柱 · ${p.element}`, x, 208);
-      ctx.setFontSize(44);
-      ctx.setFillStyle(P.title);
-    });
-
-    // 分隔
-    ctx.setStrokeStyle(P.line);
-    ctx.setLineWidth(1);
-    ctx.beginPath();
-    ctx.moveTo(60, 240);
-    ctx.lineTo(W - 60, 240);
-    ctx.stroke();
-
-    // 信息行
-    let y = 280;
-    const rows = [
-      ['日柱纳音', r.nayin],
-      ['农历', r.lunarText || '—'],
-      ['出生地点', r.place],
-      ['上一个节气', r.prevTerm],
-      ['下一个节气', r.nextTerm],
-      ['月相', r.moon],
-      ['真太阳时修正', r.trueSolar],
-    ];
-    ctx.setTextAlign('left');
-    ctx.setFontSize(24);
-    for (const [k, v] of rows) {
-      ctx.setFillStyle(P.label);
-      ctx.fillText(k, 48, y);
-      ctx.setFillStyle(P.title);
-      ctx.fillText(v, 200, y);
-      y += 44;
-    }
-
-    // 五行（简单条）
-    y += 8;
-    ctx.setFillStyle(P.label);
-    ctx.setFontSize(22);
-    ctx.fillText('五行四柱字数', 48, y);
-    y += 30;
-    if (r.tally && r.tally.length) {
-      const trackW = W - 48 * 2;
-      const unit = trackW / 5;
-      r.tally.forEach((t) => {
-        ctx.setFillStyle(P.title);
-        ctx.setFontSize(20);
-        ctx.fillText(t.name, 48, y + 14);
-        ctx.setFillStyle(P.fill);
-        ctx.fillRect(100, y, unit * 4, 16);
-        ctx.setFillStyle(P.bar);
-        ctx.fillRect(100, y, unit * t.n, 16);
-        ctx.setFillStyle(P.title);
-        ctx.setFontSize(20);
-        ctx.fillText(String(t.n), 100 + unit * 4 + 16, y + 14);
-        y += 36;
-      });
-    }
-
-    ctx.setFontSize(20);
-    ctx.setFillStyle(P.foot);
-    ctx.setTextAlign('center');
-    ctx.fillText('由真实天文历法计算 · 不含预测与判定', W / 2, H - 30);
-    ctx.draw(false, () => {
-      wx.canvasToTempFilePath({
-        canvasId: 'shareCard',
-        success: (res) => {
-          wx.saveImageToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success: () => wx.showToast({ title: '已保存到相册', icon: 'success' }),
-            fail: (e) => {
-              if (e && e.errMsg && e.errMsg.indexOf('auth') >= 0) {
-                wx.showModal({ title: '需要相册权限', content: '请授权保存图片到相册后重试', showCancel: false });
-              } else {
-                wx.showToast({ title: '保存失败', icon: 'none' });
-              }
-            },
-          });
-        },
-        fail: () => wx.showToast({ title: '生成卡片失败', icon: 'none' }),
-      });
-    });
   },
 
   // ============ 说明 ============

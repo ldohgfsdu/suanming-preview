@@ -1,0 +1,63 @@
+<view class="page">
+
+  <!-- 档案头 -->
+  <view class="result-head">
+    <view class="result-title">历法档案</view>
+    <view class="result-tag">天文历法计算</view>
+  </view>
+  <view class="result-meta" wx:if="{{r.solar}}">{{r.solar}}</view>
+
+  <view class="pillars" wx:if="{{r.pillars && r.pillars.length}}">
+    <view class="pillar" wx:for="{{r.pillars}}" wx:key="label">
+      <view class="pillar-label">{{item.label}}柱</view>
+      <view class="pillar-ganzhi">{{item.ganz}}</view>
+      <view class="pillar-elem">{{item.element}}</view>
+    </view>
+  </view>
+
+  <view class="kv"><text class="k">日柱纳音</text><text class="v">{{r.nayin}}</text></view>
+  <view class="kv" wx:if="{{r.lunarText}}"><text class="k">农历</text><text class="v">{{r.lunarText}}<text wx:if="{{r.lunarApprox}}" class="approx">（朔日前后±1天）</text></text></view>
+  <view class="kv"><text class="k">出生地点</text><text class="v">{{r.place}}</text></view>
+  <view class="kv kv-life" wx:if="{{r.since}}"><text class="k">时间岁月</text><text class="v v-life">{{r.since}}</text></view>
+
+  <view class="divider"></view>
+
+  <view class="section-title">五行四柱字数</view>
+  <view class="tally" wx:if="{{r.tally && r.tally.length}}">
+    <view class="tally-row" wx:for="{{r.tally}}" wx:key="name">
+      <view class="tally-name">{{item.name}}</view>
+      <view class="tally-track">
+        <view class="tally-fill" style="width:{{item.pct}}%"></view>
+      </view>
+      <view class="tally-n">{{item.n}}</view>
+    </view>
+  </view>
+  <view class="tally" wx:else><view class="tally-empty">—</view></view>
+
+  <view class="divider"></view>
+
+  <view class="section-title">节气</view>
+  <view class="kv"><text class="k">上一个节气</text><text class="v">{{r.prevTerm}}</text></view>
+  <view class="kv"><text class="k">下一个节气</text><text class="v">{{r.nextTerm}}</text></view>
+  <view class="kv"><text class="k">距下节气</text><text class="v">{{r.daysToNext}}</text></view>
+
+  <view class="divider"></view>
+
+  <view class="section-title">月相与时间</view>
+  <view class="kv"><text class="k">月相</text><text class="v">{{r.moon}}</text></view>
+  <view class="mv-bar" wx:if="{{r.moonLit}}">
+    <text class="mb-fill-tag">{{r.moonLit.filling}}</text>
+    <view class="mb-track"><view class="mb-fill" style="width:{{r.moonLit.litPct}}%"></view></view>
+    <text class="mb-pct">{{r.moonLit.litPct}}%（亮面）</text>
+  </view>
+  <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{r.trueSolar}}</text></view>
+
+  <view class="note">本档案均由真实天文历法计算得出，不含任何预测、判定或运气换算。</view>
+
+  <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>
+
+  <view class="back-hint" bindtap="goBack">返回首页修改 ↺</view>
+
+  <!-- 分享卡片画布（离屏） -->
+  <canvas class="share-canvas" canvas-id="shareCard" style="width:600px;height:760px;"></canvas>
+</view>

@@ -1,0 +1,72 @@
+/* pages/result/result.wxss — 独立「历法档案」结果页 */
+.page {
+  padding: 40rpx 32rpx 96rpx;
+  max-width: 720rpx;
+  margin: 0 auto;
+}
+
+.result-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12rpx; }
+.result-title { font-size: 40rpx; font-weight: 700; color: var(--ink); letter-spacing: 2rpx; }
+.result-tag { color: var(--accent); font-size: 22rpx; border: 1rpx solid var(--line); border-radius: 20rpx; padding: 4rpx 16rpx; }
+.result-meta { color: var(--muted); font-size: 28rpx; margin-bottom: 30rpx; }
+
+.pillars {
+  display: flex; justify-content: space-around;
+  padding: 22rpx 10rpx 30rpx;
+  background: var(--card); border: 1rpx solid var(--line); border-radius: 24rpx;
+  margin-bottom: 16rpx;
+}
+.pillar { text-align: center; flex: 1; }
+.pillar-label { color: var(--muted); font-size: 22rpx; margin-bottom: 10rpx; letter-spacing: 2rpx; }
+.pillar-ganzhi { font-size: 42rpx; font-weight: 600; line-height: 1.25; color: var(--ink); }
+.pillar-elem { margin-top: 10rpx; font-size: 22rpx; color: var(--accent); }
+
+.kv { display: flex; align-items: baseline; justify-content: space-between; padding: 14rpx 0; border-bottom: 1rpx solid var(--line); }
+.kv .approx { font-size: 20rpx; color: var(--muted); margin-left: 8rpx; }
+.k { color: var(--muted); font-size: 25rpx; flex-shrink: 0; margin-right: 24rpx; }
+.v { font-size: 28rpx; text-align: right; flex: 1; }
+.kv-life { border-bottom-color: transparent; }
+.kv-life .v-life { color: var(--accent); font-weight: 600; font-size: 30rpx; letter-spacing: 1rpx; }
+
+.divider { height: 1rpx; background: var(--line); margin: 26rpx 0; }
+.section-title { font-size: 26rpx; color: var(--muted); margin: 4rpx 0 16rpx; letter-spacing: 2rpx; }
+
+.tally { display: flex; flex-direction: column; }
+.tally-row { display: flex; align-items: center; margin: 10rpx 0; }
+.tally-name { width: 90rpx; font-size: 26rpx; flex-shrink: 0; }
+.tally-track { flex: 1; height: 18rpx; border-radius: 9rpx; background: var(--tint); overflow: hidden; }
+.tally-fill { height: 100%; border-radius: 9rpx; background: var(--accent); transition: width 0.5s ease; }
+.tally-n { width: 60rpx; text-align: right; font-size: 28rpx; font-weight: 600; color: var(--accent); flex-shrink: 0; }
+.tally-empty { color: var(--muted); font-size: 26rpx; }
+
+.mv-bar { display: flex; align-items: center; padding: 16rpx 0 6rpx; gap: 16rpx; }
+.mb-fill-tag { font-size: 22rpx; color: var(--accent); width: 40rpx; flex-shrink: 0; text-align: center; }
+.mb-track { flex: 1; height: 16rpx; border-radius: 8rpx; background: var(--tint); overflow: hidden; }
+.mb-fill { height: 100%; border-radius: 8rpx; background: linear-gradient(90deg, var(--accent), var(--btn)); transition: width 0.5s ease; }
+.mb-pct { font-size: 21rpx; color: var(--muted); flex-shrink: 0; }
+
+.note { margin-top: 30rpx; color: var(--muted); font-size: 23rpx; line-height: 1.7; }
+
+.btn-save {
+  margin-top: 30rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: var(--card);
+  color: var(--accent);
+  border: 1rpx solid var(--accent);
+  border-radius: 16rpx;
+  font-size: 28rpx;
+  letter-spacing: 2rpx;
+}
+.btn-save::after { border: none; }
+
+.back-hint {
+  margin-top: 24rpx;
+  text-align: center;
+  color: var(--accent);
+  font-size: 26rpx;
+  letter-spacing: 1rpx;
+  padding: 8rpx;
+}
+
+.share-canvas { position: fixed; left: -9999px; top: 0; pointer-events: none; }

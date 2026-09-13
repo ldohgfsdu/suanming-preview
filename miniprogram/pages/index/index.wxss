@@ -1,11 +1,14 @@
 .page { padding: 48rpx 32rpx 80rpx; max-width: 720rpx; margin: 0 auto; display: flex; flex-direction: column; }
 
 .hero {
-  padding: 6rpx 8rpx 36rpx;
+  padding: 14rpx 8rpx 8rpx;
   text-align: center;
 }
-.hero-title { font-size: 44rpx; font-weight: 600; letter-spacing: 4rpx; }
-.hero-sub { margin-top: 12rpx; color: var(--muted); font-size: 23rpx; letter-spacing: 1rpx; }
+.hero-sub {
+  color: var(--muted);
+  font-size: 24rpx;
+  letter-spacing: 4rpx;
+}
 .hero-date { margin-top: 22rpx; color: var(--accent); font-size: 24rpx; letter-spacing: 2rpx; }
 .today-date { margin-bottom: 16rpx; font-size: 26rpx; color: var(--muted); letter-spacing: 2rpx; }
 

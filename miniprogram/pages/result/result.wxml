@@ -1,24 +1,26 @@
 <view class="page">
 
-  <!-- 档案头 -->
-  <view class="result-head">
-    <view class="result-title">历法档案</view>
-    <view class="result-tag">天文历法计算</view>
-  </view>
-  <view class="result-meta" wx:if="{{r.solar}}">{{r.solar}}</view>
+  <!-- 档案头：以日期为主标题，方法来源为副标题（不重复导航栏标题） -->
+  <view class="result-title">{{r.solarCN}} <text class="result-tag">生辰历法档案</text></view>
+  <view class="result-sub">由真实天文历法计算 · 不含预测与判定</view>
 
   <view class="pillars" wx:if="{{r.pillars && r.pillars.length}}">
     <view class="pillar {{item.unknown ? 'is-unknown' : ''}}" wx:for="{{r.pillars}}" wx:key="label">
-      <view class="pillar-label">{{item.label}}柱</view>
       <view class="pillar-ganzhi">{{item.ganz}}</view>
-      <view class="pillar-elem">{{item.element || '时辰未知'}}</view>
+      <view class="pillar-meta"><text class="pillar-label">{{item.label}}</text><text class="pillar-elem">{{item.element || '时辰未知'}}</text></view>
     </view>
   </view>
   <view class="hour-unknown-hint" wx:if="{{r.hourUnknown}}">出生时刻未选择，时柱以「时辰未知」占位。</view>
 
   <view class="kv"><text class="k">日柱纳音</text><text class="v">{{r.nayin}}</text></view>
   <view class="kv" wx:if="{{r.lunarText}}"><text class="k">农历</text><text class="v">{{r.lunarText}}<text wx:if="{{r.lunarApprox}}" class="approx">（朔日前后±1天）</text></text></view>
-  <view class="kv"><text class="k">出生地点</text><text class="v">{{r.place}}</text></view>
+  <view class="kv kv-place">
+    <text class="k">出生地点</text>
+    <view class="v place-block">
+      <view class="place-name">{{r.placeName}}</view>
+      <view class="place-coord" wx:if="{{r.placeCoord}}">{{r.placeCoord}}</view>
+    </view>
+  </view>
 
   <view class="divider"></view>
 
@@ -46,10 +48,9 @@
   <view class="section-title">月相</view>
   <view class="kv"><text class="k">月相</text><text class="v">{{r.moonPhase || '—'}}</text></view>
   <view class="kv"><text class="k">朔望月龄</text><text class="v">{{r.moonAge || '—'}}</text></view>
-  <view class="mv-bar" wx:if="{{r.moonLit}}">
-    <text class="mb-fill-tag">{{r.moonLit.filling}}</text>
+  <view class="mb-bar" wx:if="{{r.moonLit}}">
     <view class="mb-track"><view class="mb-fill" style="width:{{r.moonLit.litPct}}%"></view></view>
-    <text class="mb-pct">{{r.moonLit.litPct}}%（亮面）</text>
+    <text class="mb-pct">{{r.moonLit.filling}} · 照亮约 {{r.moonLit.litPct}}%</text>
   </view>
   <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{r.trueSolar}}</text></view>
 
@@ -57,7 +58,7 @@
 
   <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>
 
-  <view class="back-hint" bindtap="goBack">返回首页修改 ↺</view>
+  <view class="back-hint" bindtap="goBack">← 返回首页修改参数</view>
 
   <!-- 分享卡片画布（离屏） -->
   <canvas class="share-canvas" canvas-id="shareCard" style="width:600px;height:760px;"></canvas>

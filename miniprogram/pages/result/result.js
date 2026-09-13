@@ -77,7 +77,7 @@ Page({
     const rows = [
       ['日柱纳音', r.nayin],
       ['农历', r.lunarText || '—'],
-      ['出生地点', r.place],
+      ['出生地点', (r.placeCoord ? r.placeName + ' · ' + r.placeCoord : r.placeName)],
       ['上一个节气', r.prevTerm],
       ['下一个节气', r.nextTerm],
       ['月相', (r.moonPhase || '—') + (r.moonAge ? `（朔望月龄 ${r.moonAge}）` : '')],

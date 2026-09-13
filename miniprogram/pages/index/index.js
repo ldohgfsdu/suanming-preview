@@ -375,14 +375,14 @@ Page({
       if (this.data.lonText) wx.showToast({ title: '请输入东经 73–135°', icon: 'none' });
       return;
     }
-    this.setData({
-      lonActive: true,
-      placeLon: v,
-      placeLat: null,
-      placeLabel: `手动经度 · 东经 ${v}°`,
-      placeHint: '用于地方太阳时修正',
-      hasResult: false, result: null,
-    });
+      this.setData({
+        lonActive: true,
+        placeLon: v,
+        placeLat: null,
+        placeLabel: '手动经度',
+        placeHint: `东经 ${v}°`,
+        hasResult: false, result: null,
+      });
   },
 
   // ============ 今日天时 ============
@@ -476,12 +476,17 @@ Page({
       const termNow = f.term.next ? `${f.term.next.name} ${fmtTermDate(f.term.next.utc)}` : '—';
       const result = {
         solar: `${y}-${pad(m)}-${pad(d)}`,
+        solarCN: `${y}年${m}月${d}日`,
         gender: this.data.gender,
         lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
         lunarApprox: f.lunar ? !!f.lunar.approx : false,
-        place: lon != null
-          ? (this.data.lonActive ? this.data.placeLabel : `${this.data.placeLabel} · ${fmtLng(lon)}`)
+        hasPlace: lon != null,
+        placeName: (lon != null)
+          ? (this.data.lonActive ? '手动经度' : this.data.placeLabel)
           : '请选择出生地点（跳过真太阳时修正）',
+        placeCoord: (lon != null && !this.data.lonActive)
+          ? `东经 ${Number(this.data.placeLon).toFixed(1)}° · 北纬 ${Number(this.data.placeLat).toFixed(1)}°`
+          : (lon != null ? fmtLng(lon) : ''),
         pillars,
         hourUnknown: !hourP,
         nayin: f.nayin,

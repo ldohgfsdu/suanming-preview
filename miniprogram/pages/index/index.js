@@ -56,6 +56,13 @@ const SHICHEN = [
 ];
 const HOUR_OPTIONS = ['时辰未知'].concat(SHICHEN.map((s) => `${s.name}（${s.range}）`));
 
+// 由真实时刻（本地时间小时）映射到十二时辰槽（子=23–01 … 亥=21–23）。
+// 时辰槽 k 覆盖 [2k-1, 2k+1)，据此把 getHours() 归入对应槽。
+function shichenIndexOfHour(h) {
+  if (!Number.isFinite(h)) return 0; // 未知
+  return Math.floor((((h + 1) + 24) % 24) / 2) % 12;
+}
+
 // 农历文字
 const MONTH_CN = ['', '正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
 const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
@@ -154,13 +161,27 @@ Page({
   switchSolarMode() {
     this.setData({ calMode: 'solar' });
   },
-  // 一键回到今天（公历/农历日期均重置，并清空当前结果）
+  // 一键回到今天：公历/农历日期归位今日；时辰自动设为当前真实时刻所在的时辰；
+  // 并刷新顶部「今日天时」卡、清空已生成的结果，让表单与今日天时彼此呼应。
   onResetToday() {
     const now = new Date();
-    const t = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+    const t = `${y}-${pad(m)}-${pad(d)}`;
+    // 时辰：按当前真实时刻归入十二时辰槽（回填给“出生时刻”输入，便于立即生成）
+    const h = now.getHours();
+    const idx = shichenIndexOfHour(h);
+    const s = SHICHEN[idx];
+    this.setData({
+      hourIdx: idx + 1,        // 选择器第 0 项为“时辰未知”
+      hour: s.hour,           // 槽中点，供内部时辰干支计算
+      hourLabel: `${s.name}（${s.range}）`,
+      hasResult: false,
+      result: null,
+    });
     this.initSolar(t);
-    this.initLunarToToday(now.getFullYear(), now.getMonth() + 1, now.getDate());
-    this.setData({ hasResult: false, result: null });
+    this.initLunarToToday(y, m, d);
+    this.buildToday(y, m, d);   // 今日天时卡同步刷新（含当前时刻）
+    this.refreshClock();
   },
   switchLunarMode() {
     this.setData({ calMode: 'lunar' });

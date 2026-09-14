@@ -53,7 +53,7 @@
   </view>
   <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{r.trueSolar}}</text></view>
 
-  <view class="note">本档案均由真实天文历法计算得出，不含任何预测、判定或运气换算。</view>
+  <view class="note">本档案由真实天文历法计算得出：结果均源自真太阳时、天文节气等历法数据，仅供传统文化研究与娱乐参考，不含任何预测与判定。</view>
 
   <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>
 

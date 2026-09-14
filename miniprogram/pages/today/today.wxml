@@ -85,5 +85,5 @@
   <!-- 操作 -->
   <button class="btn-fill" bindtap="fillToday">以今日作为出生档案日期</button>
 
-  <view class="foot-note">以上均为真实天文历法计算，不含任何预测、判定或运气换算。</view>
+  <view class="foot-note">以上由真实天文历法计算，结果源自真太阳时、节气等历法数据，仅供传统文化研究与娱乐参考，不含任何预测与判定。</view>
 </view>

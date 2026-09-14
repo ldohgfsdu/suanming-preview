@@ -94,25 +94,27 @@
       <text>出生地点</text>
       <text class="why" bindtap="onWhyPlace">ⓘ</text>
     </view>
-    <picker class="place-line" mode="selector" range="{{provNames}}" value="{{provIdx}}" bindchange="onProvChange">
-      <view class="place-label">省 / 市 / 区</view>
-      <view class="place-value">{{provNames[provIdx]}}</view>
-      <view class="place-arrow">▾</view>
-    </picker>
-    <view class="place-links" wx:if="{{placeMode === 'province'}}">
-      <picker class="place-link" mode="selector" range="{{cityNames}}" value="{{cityIdx}}" bindchange="onCityChange">
-        <text>{{cityNames[cityIdx] || '选市'}}</text>
-        <text class="p-arrow">▾</text>
+    <view class="place-row">
+      <picker class="cell" mode="selector" range="{{provNames}}" value="{{provIdx}}" bindchange="onProvChange">
+        <view class="cell-head">省</view>
+        <view class="cell-body">
+          <text class="cell-value">{{provNames[provIdx]}}</text>
+          <text class="cell-arrow">▾</text>
+        </view>
       </picker>
-      <picker class="place-link" mode="selector" range="{{districtNames}}" value="{{districtIdx}}" bindchange="onDistrictChange" wx:if="{{districtNames.length > 0}}">
-        <text>{{districtNames[districtIdx] || '选区/县'}}</text>
-        <text class="p-arrow">▾</text>
+      <picker class="cell" mode="selector" range="{{cityNames}}" value="{{cityIdx}}" bindchange="onCityChange" wx:if="{{placeMode !== 'municipal'}}">
+        <view class="cell-head">市</view>
+        <view class="cell-body">
+          <text class="cell-value">{{cityNames[cityIdx] || '选市'}}</text>
+          <text class="cell-arrow">▾</text>
+        </view>
       </picker>
-    </view>
-    <view class="place-links" style="margin-top:20rpx" wx:else>
-      <picker class="place-link" mode="selector" range="{{districtNames}}" value="{{districtIdx}}" bindchange="onDistrictChange">
-        <text>{{districtNames[districtIdx] || '选区/县'}}</text>
-        <text class="p-arrow">▾</text>
+      <picker class="cell" mode="selector" range="{{districtNames}}" value="{{districtIdx}}" bindchange="onDistrictChange">
+        <view class="cell-head">区/县</view>
+        <view class="cell-body">
+          <text class="cell-value">{{districtNames[districtIdx] || '选区'}}</text>
+          <text class="cell-arrow">▾</text>
+        </view>
       </picker>
     </view>
     <view class="place-hint">{{placeHint}}</view>

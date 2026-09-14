@@ -117,26 +117,23 @@
 .place-pickers .picker { width: 100%; display: block; }
 .place-hint { margin-top: 12rpx; color: var(--accent); font-size: 23rpx; }
 
-/* ---------- 出生地点（三线下拉） ---------- */
+/* ---------- 出生地点（省/市/区县---排） ---------- */
 .sub-head { display: flex; align-items: center; margin-top: 8rpx; color: var(--ink); font-size: 30rpx; font-weight: 600; letter-spacing: 1rpx; }
 .sub-head .why { margin-left: 10rpx; color: var(--accent); font-size: 28rpx; }
-.place-line {
-  margin-top: 18rpx;
-  display: flex; align-items: center;
-  background: var(--tint); border: 1rpx solid var(--line); border-radius: 16rpx;
-  padding: 26rpx 26rpx;
-}
-.place-label { font-size: 22rpx; color: var(--muted); margin-right: 20rpx; flex-shrink: 0; }
-.place-value { flex: 1; font-size: 30rpx; color: var(--ink); font-weight: 500; }
-.place-arrow { color: var(--muted); font-size: 22rpx; margin-left: 12rpx; }
-.place-links { display: flex; gap: 20rpx; margin-top: 20rpx; }
-.place-link {
-  flex: 1;
-  display: flex; align-items: center; justify-content: space-between;
+.place-row { display: flex; gap: 16rpx; margin-top: 18rpx; }
+.place-row .cell {
+  flex: 1; min-width: 0;
   background: var(--card); border: 1rpx solid var(--line); border-radius: 14rpx;
-  padding: 20rpx 22rpx; font-size: 27rpx; color: var(--ink);
+  padding: 14rpx 20rpx 16rpx;
 }
-.place-link .p-arrow { color: var(--muted); font-size: 20rpx; margin-left: 8rpx; }
+.cell-head { font-size: 20rpx; color: var(--muted); margin-bottom: 6rpx; }
+.cell-body { display: flex; align-items: center; }
+.cell-value {
+  flex: 1; min-width: 0;
+  font-size: 26rpx; color: var(--ink); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cell-arrow { color: var(--muted); font-size: 20rpx; margin-left: 8rpx; }
 
 .advanced { margin-top: 8rpx; }
 .lon-input {
@@ -269,8 +266,8 @@
   from { opacity: 0; transform: translateY(18rpx); }
   to   { opacity: 1; transform: none; }
 }
-.picker-value, .place-value { transition: opacity 0.15s ease; }
-.picker:active .picker-value, .place-line:active .place-value { opacity: 0.55; }
+.picker-value, .cell-value { transition: opacity 0.15s ease; }
+.picker:active .picker-value, .place-row .cell:active .cell-value { opacity: 0.55; }
 .row { transition: background 0.18s ease; }
 .row:active { background: var(--tint); }
 .today-more, .today-info, .why, .adv-link, .about-link { transition: opacity 0.15s ease; }

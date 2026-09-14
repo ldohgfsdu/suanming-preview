@@ -56,3 +56,19 @@ test('computeArchive 无经度 moon 不炸', () => {
   assert.ok(f.moon.ageDays >= 0 && f.moon.ageDays < 29.6);
   assert.ok(['朔', '娥眉月', '上弦月', '盈凸月', '望', '亏凸月', '下弦月', '残月'].includes(f.moon.name));
 });
+
+test('tally 计入天干+地支|气（丙午丁酉壬辰丙午 → 火5 水1 金1 土1 木0）', () => {
+  const t = tally(['丙', '丁', '壬', '丙'], ['午', '酉', '辰', '午']);
+  assert.deepStrictEqual(t, { wood: 0, fire: 5, earth: 1, metal: 1, water: 1 });
+});
+
+test('tally 仅天干时不计地支（向后兼容）', () => {
+  assert.deepStrictEqual(tally(['丙', '丁']), { wood: 0, fire: 2, earth: 0, metal: 0, water: 0 });
+});
+
+test('computeArchive 五行总数 = 呈现柱数×2（天干+地支各计一次）', () => {
+  const f = computeArchive(2024, 2, 4, 12, null);
+  const present = Object.values(f.four).filter((p) => p && p.ganz);
+  const sum = Object.values(f.tally).reduce((a, b) => a + b, 0);
+  assert.strictEqual(sum, present.length * 2);
+});

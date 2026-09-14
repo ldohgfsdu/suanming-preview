@@ -21,6 +21,12 @@ export const ELEMENT = {
 };
 export const ELEMENT_NAME = { wood: '木', fire: '火', earth: '土', metal: '金', water: '水' };
 
+// 地支本气五行（本气藏干，确定性映射，非预测）：子水 丑土 寅木 卯木 辰土 巳火 午火 未土 申金 酉金 戌土 亥水
+export const ELEMENT_ZHI = {
+  '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', '辰': 'earth', '巳': 'fire',
+  '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water',
+};
+
 // 六甲子纳音 (static, day-cycle index 0..59)
 const NAYIN = [
   '海中金', '海中金', '炉中火', '炉中火', '大林木', '大林木', '路旁土', '路旁土', '剑锋金', '剑锋金',
@@ -69,10 +75,11 @@ export function hourPillar(dayStemIdx, hour) {
   return { gan: GANS[stem], zhi: ZHIS[zhi], ganzhi: GANS[stem] + ZHIS[zhi] };
 }
 
-/** 四柱五行字数（sum over given stems） */
-export function tally(ganArr) {
+/** 四柱五行字数（天干 + 地支|气）；zhiArr 可选，缺省仅计天干。 */
+export function tally(ganArr, zhiArr = []) {
   const c = { wood: 0, fire: 0, earth: 0, metal: 0, water: 0 };
   for (const g of ganArr) { const e = ELEMENT[g]; if (e) c[e] += 1; }
+  for (const z of zhiArr) { const e = ELEMENT_ZHI[z]; if (e) c[e] += 1; }
   return c;
 }
 
@@ -157,6 +164,7 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
   const daysToNext = next ? Number(((next.jde - jd)).toFixed(4)) : null;
 
   const stems = [yp.gan, mp ? mp.gan : null, dp.gan, hp ? hp.gan : null].filter(Boolean);
+  const zhis = [yp.zhi, mp ? mp.zhi : null, dp.zhi, hp ? hp.zhi : null].filter(Boolean);
 
   // 真太阳时
   let eot = eotMinutes(jd);
@@ -179,7 +187,7 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
     },
     chang_ganzhi: yp.gan + yp.zhi + (mp ? mp.gan + mp.zhi : '') + dp.gan + dp.zhi + (hp ? hp.gan + hp.zhi : ''),
     nayin: NAYIN[dp.index % 60],
-    tally: tally(stems),
+    tally: tally(stems, zhis),
     term: { prev, next, daysToNext },
     trueSolar: { offsetMinutes: tSolar, degraded },
     moon: { ageDays: Number(lunarAge(jd).ageDays.toFixed(4)), name: moon.name, sym: moon.sym },

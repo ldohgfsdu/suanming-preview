@@ -95,7 +95,7 @@
       <text class="why" bindtap="onWhyPlace">ⓘ</text>
     </view>
     <view class="place-row">
-      <picker class="cell" mode="selector" range="{{provNames}}" value="{{provIdx}}" bindchange="onProvChange">
+      <picker class="cell prov" mode="selector" range="{{provNames}}" value="{{provIdx}}" bindchange="onProvChange">
         <view class="cell-head">省</view>
         <view class="cell-body">
           <text class="cell-value">{{provNames[provIdx]}}</text>

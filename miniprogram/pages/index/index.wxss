@@ -126,6 +126,12 @@
   background: var(--card); border: 1rpx solid var(--line); border-radius: 14rpx;
   padding: 14rpx 20rpx 16rpx;
 }
+.place-row .prov {
+  /* 省按内容自适应宽度（短则窄），封顶避免挤压市/区 */
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 32%;
+}
 .cell-head { font-size: 20rpx; color: var(--muted); margin-bottom: 6rpx; }
 .cell-body { display: flex; align-items: center; }
 .cell-value {
@@ -145,7 +151,9 @@
 .adv-link { margin: 20rpx 0 4rpx; color: var(--accent); font-size: 24rpx; text-align: center; letter-spacing: 1rpx; }
 
 .btn {
-  margin-top: 36rpx;
+  display: block;
+  width: 380rpx;
+  margin: 36rpx auto 0;
   background: var(--accent);
   color: #fff;
   border-radius: 18rpx;

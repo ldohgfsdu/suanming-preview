@@ -1,6 +1,6 @@
 /* pages/result/result.wxss — 独立「历法档案」结果页 */
 .page {
-  padding: 40rpx 32rpx 96rpx;
+  padding: 40rpx 32rpx 180rpx;
   max-width: 720rpx;
   margin: 0 auto;
 }
@@ -54,6 +54,7 @@
 
 .divider { height: 1rpx; background: var(--line); margin: 26rpx 0; }
 .section-title { font-size: 26rpx; color: var(--muted); margin: 4rpx 0 16rpx; letter-spacing: 2rpx; }
+.section-title .section-inline { font-weight: 400; color: var(--ink); letter-spacing: 1rpx; font-size: 28rpx; }
 
 .tally { display: flex; flex-direction: column; }
 .tally-row { display: flex; align-items: center; margin: 10rpx 0; }

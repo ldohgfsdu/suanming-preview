@@ -82,7 +82,7 @@
     </view>
 
     <!-- 性别（存档用，不计入历法数据） -->
-    <view class="row row-noborder">
+    <view class="row row-noborder gender-row">
       <view class="label">性别</view>
       <view class="gender-switch">
         <view wx:for="{{genders}}" wx:key="*this" class="gender-opt {{gender === item ? 'on' : ''}}" data-g="{{item}}" bindtap="onGenderTap">{{item}}</view>

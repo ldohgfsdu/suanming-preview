@@ -45,8 +45,7 @@
 
   <view class="divider"></view>
 
-  <view class="section-title">月相</view>
-  <view class="kv"><text class="k">月相</text><text class="v">{{r.moonPhase || '—'}}</text></view>
+  <view class="section-title">月相<text class="section-inline" wx:if="{{r.moonPhase}}">　{{r.moonPhase}}</text></view>
   <view class="kv"><text class="k">朔望月龄</text><text class="v">{{r.moonAge || '—'}}</text></view>
   <view class="mb-bar" wx:if="{{r.moonLit}}">
     <view class="mb-track"><view class="mb-fill" style="width:{{r.moonLit.litPct}}%"></view></view>

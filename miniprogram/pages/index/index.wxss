@@ -102,6 +102,11 @@
   color: #fff;
   border-color: var(--accent);
 }
+/* 性别单独按压反馈，避免整行 .row:active 灰底造成“都被点了”的错觉 */
+.gender-row { transition: background 0.18s ease; }
+.gender-row:active { background: transparent; }
+.gender-opt { position: relative; }
+.gender-opt:active { opacity: 0.7; transform: scale(0.97); }
 .picker { flex: 1; text-align: right; }
 .picker-value { font-size: 30rpx; color: var(--ink); }
 .lunar-preview {

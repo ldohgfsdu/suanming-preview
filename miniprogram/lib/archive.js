@@ -144,14 +144,61 @@ export function lunarPhase(ageDays) {
 }
 
 // ---------------- 完整档案 ----------------
+/** 由小时（可为小数）映射到时辰槽 index（子=0 … 亥=11）。 */
+function zhiOfHour(hour) {
+  if (!Number.isFinite(hour)) return 0;
+  return Math.floor(((((hour + 1) + 24) % 24) / 2)) % 12;
+}
+/** 在公历日上增加 days 天后返回新的公历日（仅取“日”，天内时刻取午正）。 */
+function shiftDate(y, m, d, days) {
+  const g = jdeToGregorian(gregorianToJde(y, m, d) + days);
+  return { y: g.y, m: g.m, d: g.d };
+}
+/** 真太阳时本地化：把所选时刻（小时）按出生地真太阳时修正，得到本地历日与太阳时。
+ * 返回修正分钟、修正后太阳时(solarHour，可为负或≥24)、跨日天数(dayShift)、
+ * 归一化日内太阳时(canonHour)与移动后的公历日(canonDate)。 */
+export function trueSolarToLocal(y, m, d, hour, lonDeg) {
+  const jmin = eotMinutes(gregorianToJde(y, m, d)) + 4 * (lonDeg - 120);
+  const solarHour = hour + jmin / 60;                    // 可 <0 或 ≥24
+  const dayShift = Math.floor(solarHour / 24);          // 负=前一日，正=次日
+  const canonHour = ((solarHour % 24) + 24) % 24;
+  const canonDate = shiftDate(y, m, d, dayShift);
+  return {
+    offsetMinutes: Number(jmin.toFixed(2)),
+    solarHour, dayShift, canonHour,
+    canonDate, dayChanged: dayShift !== 0,
+    dateText: `${String(canonDate.y).padStart(4, '0')}-${String(canonDate.m).padStart(2, '0')}-${String(canonDate.d).padStart(2, '0')}`,
+  };
+}
+
 /** hour：0..23，或 -1 = 未知（则无时柱）。lonDeg：本地经度（东经正，如北京 116.4）；null=未提供。 */
 export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
   const jd = gregorianToJde(y, m, d);
-  const yp = yearPillar(jd);
-  const dp = dayPillar(jd);
-  const yStemIdx = ((yp.ganzhiYear - 1984) % 10 + 10) % 10;
-  const mp = monthPillar(jd, yp.ganzhiYear);
-  const hp = (hour >= 0 && hour <= 23) ? hourPillar(dp.index % 10, hour) : null;
+  // 真太阳时修正：仅当提供了经度且时辰已知时，才进入“单一时间事实源”chain。
+  const rawCanon = (Number.isFinite(lonDeg) && hour >= 0 && hour <= 23)
+    ? trueSolarToLocal(y, m, d, hour, lonDeg) : null;
+  // 若真太阳时修正把本地历日推到受支持年份(1900-2100)之外（仅极能边界），则回退到该日
+  // 的非修正路径，避免越界换算抛错。
+  const canon = (rawCanon
+    && rawCanon.canonDate.y >= 1900 && rawCanon.canonDate.y <= 2100) ? rawCanon : null;
+
+  let yp, mp, dp, hp, y2, m2, d2;
+  if (canon) {
+    // —— 单一时间事实源：先确定 真太阳时->本地历日+太阳时，再统一算各时间敏感柱 ——
+    y2 = canon.canonDate.y; m2 = canon.canonDate.m; d2 = canon.canonDate.d;
+    dp = dayPillar(gregorianToJde(y2, m2, d2));
+    // 年/月柱由出生“绝对瞬间”的太阳黄经判定（立春/节边界，经既有规则重算）
+    const absJde = jd + ((hour - 12) / 24);
+    yp = yearPillar(absJde);
+    mp = monthPillar(absJde, yp.ganzhiYear);
+    // 时柱由修正后的太阳时判定
+    hp = hourPillar(dp.index % 10, 2 * zhiOfHour(canon.canonHour));
+  } else {
+    y2 = y; m2 = m; d2 = d;
+    yp = yearPillar(jd); dp = dayPillar(jd);
+    mp = monthPillar(jd, yp.ganzhiYear);
+    hp = (hour >= 0 && hour <= 23) ? hourPillar(dp.index % 10, hour) : null;
+  }
 
   // 节气 bracket（前后各一）
   let prev = null, next = null, bestP = -Infinity, bestN = Infinity;
@@ -173,11 +220,13 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
 
   const moon = lunarPhase(lunarAge(jd).ageDays);
 
-  const lunar = solarToLunar(y, m, d);
+  const lunar = solarToLunar(y2, m2, d2);
 
   return {
-    solar: { y, m, d },
-    instant_day: `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+    solar: { y: y2, m: m2, d: d2 },
+    solarInput: { y, m, d },
+    instant_day: `${String(y2).padStart(4, '0')}-${String(m2).padStart(2, '0')}-${String(d2).padStart(2, '0')}`,
+    dayShift: canon ? canon.dayShift : 0,
     lunar, // {year,month,day,leap,approx,text} 或 null
     four: {
       year: { label: '年', gan: yp.gan, zhi: yp.zhi, ganz: yp.gan + yp.zhi, element: ELEMENT[yp.gan] },
@@ -189,7 +238,12 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
     nayin: NAYIN[dp.index % 60],
     tally: tally(stems, zhis),
     term: { prev, next, daysToNext },
-    trueSolar: { offsetMinutes: tSolar, degraded },
+    trueSolar: {
+      offsetMinutes: tSolar, degraded,
+      canonHour: canon ? Number(canon.canonHour.toFixed(3)) : null,
+      canonDate: canon ? { y: canon.canonDate.y, m: canon.canonDate.m, d: canon.canonDate.d } : null,
+      dayChanged: canon ? canon.dayChanged : false,
+    },
     moon: { ageDays: Number(lunarAge(jd).ageDays.toFixed(4)), name: moon.name, sym: moon.sym },
     algorithmic_approx: false,
   };

@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  computeArchive, monthPillar, hourPillar, tally, lunarAge, newMoonJde, lunarPhase,
+  computeArchive, monthPillar, hourPillar, tally, lunarAge, newMoonJde, lunarPhase, trueSolarToLocal,
 } from '../../miniprogram/lib/archive.js';
-import { gregorianToJde } from '../../miniprogram/lib/engine.js';
+import { dayPillar, gregorianToJde } from '../../miniprogram/lib/engine.js';
 
 test('monthPillar.liChun starts 寅 month', () => {
   const jd = gregorianToJde(2023, 2, 5); // 次日仍在寅月
@@ -71,4 +71,39 @@ test('computeArchive 五行总数 = 呈现柱数×2（天干+地支各计一次�
   const present = Object.values(f.four).filter((p) => p && p.ganz);
   const sum = Object.values(f.tally).reduce((a, b) => a + b, 0);
   assert.strictEqual(sum, present.length * 2);
+});
+
+// ---- 真太阳时“单一时间事实源”模型 ----
+const SHICHEN = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+function slotIdx(h) { return Math.floor(((((h + 1) + 24) % 24) / 2)) % 12; }
+
+test('UTC8 乌鲁木齐 午时 真太阳时跨时辰→巳时，日不变', () => {
+  const f = computeArchive(2024, 6, 1, 12, 87.8);
+  const sh = trueSolarToLocal(2024, 6, 1, 12, 87.8);
+  assert.strictEqual(f.dayShift, 0);
+  assert.strictEqual(f.trueSolar.dayChanged, false);
+  assert.strictEqual(sh.canonDate.y, 2024);
+  assert.strictEqual(f.solar.y, 2024);
+  // 修正后落在巳时（canonHour≈9.9），时柱应为巳，不是午
+  assert.strictEqual(SHICHEN[slotIdx(sh.canonHour)], '巳');
+  assert.strictEqual(f.four.hour.zhi, '巳');
+});
+
+test('北京 子时(00) 真太阳时跨零点→前一日，日柱跨日更新、日历日与输入分开', () => {
+  const f = computeArchive(2024, 6, 15, 0, 116.4);
+  assert.strictEqual(f.dayShift, -1);
+  assert.strictEqual(f.trueSolar.dayChanged, true);
+  assert.strictEqual(f.solar.d, 14); // 真时在 6-14（前一日）
+  assert.strictEqual(f.solarInput.d, 15);
+  // 日柱应按修正后的 6-14 计算，而非输入日
+  const d14 = dayPillar(gregorianToJde(2024, 6, 14));
+  const want = d14.gan + d14.zhi;
+  assert.strictEqual(f.four.day.ganz, want);
+});
+
+test('无经度-无真时修正：日柱仍用输入日', () => {
+  const a = computeArchive(2024, 6, 15, 12, null);
+  const d15 = dayPillar(gregorianToJde(2024, 6, 15));
+  assert.strictEqual(a.four.day.ganz, d15.gan + d15.zhi);
+  assert.strictEqual(a.solar.d, 15);
 });

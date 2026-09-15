@@ -36,15 +36,15 @@ test('立春前 2/3 → 癸卯；立春后 2/4 → 甲辰（2024）', () => {
 });
 
 // ---------- 子时换日规则（日柱当日不变，时柱随 23/0 均为子时，1 点进丑时） ----------
-test('子时 23:00 时柱=壬子，日柱=癸亥（2023-05-04）', () => {
+test('子时 23:00 时柱=庚子，日柱=壬戌（2023-05-04，1949-10-01=甲子锚定）', () => {
   const a = computeArchive(2023, 5, 4, 23, null);
-  assert.strictEqual(a.four.day.ganz, '癸亥');
-  assert.strictEqual(a.four.hour.ganz, '壬子');
+  assert.strictEqual(a.four.day.ganz, '壬戌');
+  assert.strictEqual(a.four.hour.ganz, '庚子');
 });
-test('00:30 时柱仍壬子（子时）,日柱不变', () => {
+test('00:30 时柱仍庚子（子时）,日柱不变', () => {
   const a = computeArchive(2023, 5, 4, 0, null);
-  assert.strictEqual(a.four.day.ganz, '癸亥');
-  assert.strictEqual(a.four.hour.ganz, '壬子');
+  assert.strictEqual(a.four.day.ganz, '壬戌');
+  assert.strictEqual(a.four.hour.ganz, '庚子');
 });
 
 // ---------- 真太阳时经度差异（北京 vs 乌鲁木齐） ----------

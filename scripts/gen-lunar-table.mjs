@@ -47,14 +47,20 @@ export function beijingJDN(instJDE) {
 export function monthStartJ(k) { return beijingJDN(newMoonJde(k)); }
 export function monthLen(k) { return monthStartJ(k + 1) - monthStartJ(k); }
 
-/** 朔月 [newMoonJde(k), newMoonJde(k+1)) 内包含的中气 ord，或 null */
+/** 朔月内包含的中气 ord，或 null。
+ * 中气归属采用北京民用日（日历换日于北京时间 00:00）：一朔月包含中气 iff
+ * 该中气瞬间换算到北京民用日的 JDN ∈ [月首北京日, 次月北京日)。
+ * 即把朔（月首）与中气约定都统一到北京民用日，避免 UTC 瞬间与北京日期混用
+ * 导致同一日（例如朔与中气同在北京某日）被错分到上下相邻月份（见 2020 闰四月对拍）。
+ */
 export function midOrdIn(k) {
-  const lo = newMoonJde(k), hi = newMoonJde(k + 1);
-  const yr = jdeToGregorian(lo).y;
+  const loDay = monthStartJ(k), hiDay = monthStartJ(k + 1);
+  const yr = jdeToGregorian(newMoonJde(k)).y;
   for (let o = 1; o < 24; o += 2) {
     for (let yy = Math.max(1900, yr - 1); yy <= Math.min(2100, yr + 1); yy++) {
       const q = termJde(o, yy);
-      if (q >= lo && q < hi) return o;
+      const qDay = beijingJDN(q);
+      if (qDay >= loDay && qDay < hiDay) return o;
     }
   }
   return null;

@@ -27,9 +27,9 @@ test('hourPillar 己日戊辰时', () => {
   assert.strictEqual(hp.ganzhi, '戊辰');
 });
 
-test('computeArchive 2000-01-01 己未日', () => {
+test('computeArchive 2000-01-01 戊午日（1949-10-01=甲子锚定）', () => {
   const f = computeArchive(2000, 1, 1);
-  assert.strictEqual(f.four.day.ganz, '己未');
+  assert.strictEqual(f.four.day.ganz, '戊午');
   assert.strictEqual(f.four.year.ganz, '己卯');
 });
 
@@ -114,7 +114,7 @@ test('非边界日期：年/月柱稳定且与地点无关（2020-06-15）', () 
       const f = computeArchive(2020, 6, 15, h, lon);
       assert.strictEqual(f.four.year.ganz, '庚子');
       assert.strictEqual(f.four.month.ganz, '壬午');
-      assert.strictEqual(f.four.day.ganz, '庚寅'); // 未跨日
+      assert.strictEqual(f.four.day.ganz, '己丑'); // 未跨日
       assert.strictEqual(f.dayShift, 0);
     }
   }

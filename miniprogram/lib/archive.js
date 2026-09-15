@@ -10,8 +10,8 @@
 
 import {
   gregorianToJde, jdeToGregorian,
-  termJdeNear, dayPillar, yearPillar, eotMinutes, isoUtc,
-  GANS, ZHIS, TERMS,
+  termJdeNear, dayPillar, yearPillar, eotMinutes, solarTermResultAt,
+  GANS, ZHIS,
 } from './engine.js';
 import { solarToLunar } from './lunar.js';
 
@@ -93,7 +93,7 @@ export function newMoonJde(k) {
   const Fm = mod360(160.7108 + 390.67050284 * k - 0.0016118 * T * T - 0.00000227 * T * T * T + 0.000000046 * T * T * T * T);
   const Om = mod360(124.7746 - 1.56375588 * k + 0.0020672 * T * T + 0.00000215 * T * T * T);
   J +=
-    -0.40720 * Math.sin(rd(M))
+    -0.40720 * Math.sin(rd(Mm))   // 最大项饱动作用于月心平近点角 M'(Mm)，非太阳平近角 M
     + 0.17241 * E * Math.sin(rd(M))
     + 0.01608 * Math.sin(rd(2 * Mm))
     + 0.01039 * Math.sin(rd(2 * Fm))
@@ -200,15 +200,8 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
     hp = (hour >= 0 && hour <= 23) ? hourPillar(dp.index % 10, hour) : null;
   }
 
-  // 节气 bracket（前后各一）
-  let prev = null, next = null, bestP = -Infinity, bestN = Infinity;
-  for (let o = 0; o < 24; o++) {
-    const t = termJdeNear(o, jd);
-    if (!t) continue;
-    if (t.jde <= jd && t.jde > bestP) { bestP = t.jde; prev = { name: TERMS[o], ord: o, utc: isoUtc(t.jde) }; }
-    if (t.jde >= jd && t.jde < bestN) { bestN = t.jde; next = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde }; }
-  }
-  const daysToNext = next ? Number(((next.jde - jd)).toFixed(4)) : null;
+  // 节气 bracket（前后各一）——由 engine 的单一事实源 solarTermResultAt 提供
+  const { prev, next, daysToNext } = solarTermResultAt(jd);
 
   const stems = [yp.gan, mp ? mp.gan : null, dp.gan, hp ? hp.gan : null].filter(Boolean);
   const zhis = [yp.zhi, mp ? mp.zhi : null, dp.zhi, hp ? hp.zhi : null].filter(Boolean);

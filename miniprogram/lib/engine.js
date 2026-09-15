@@ -3,10 +3,13 @@
  * Scope/precision notes kept in ASCII:
  *   - Gregorian<->Julian Day exact (Meeus Fliegel inverse).
  *   - gregorianToJde(y,m,d) returns the JDN for that day (noon coordinate epoch) as an integer.
- *   - Solar apparent longitude (Meeus low precision), verified against equinox.
+ *   - Solar apparent longitude (Meeus low precision), verified against equinox/solstice.
+ *     Model civil-time envelope is about +/-5-6 min from authoritative tables; astronomy-audit
+ *     regressions assert an explicit tolerance of +/-8 min.
  *   - Each solar term solved by bisection where apparent lon = 285+15*ord (deg).
- *   - Day pillar anchored day: 2000-01-01 -> stem/branch via index 55 (auditable, calibrate in golden).
- *   - Lunar phase approximate (New Moon), no leap-month table -> algorithmic_approx=true.
+ *   - Day pillar anchored: 1949-10-01 = 甲子日 (idx 0) => 2000-01-01 = 戊午日 (idx 55).
+ *   - Lunar phases (朔望) solved by Meeus new-moon; lunisolar month table built build-time
+     (闰月 via 中气), see lib/lunar-table.js.
  *   - Range 1900-2100; out-of-range throws.
  */
 'use strict';
@@ -114,9 +117,28 @@ export function termJdeNear(ord, jde) {
   return best;
 }
 
+/**
+ * 统一节气 bracket（单一事实源）：给定任意 JDE，返回它前后最近的节气，以及距下一个节气
+ * 的天际（天）。`prev.next`、全页（index 首页 / result / today / terms）都用它，杜绝多处
+ * 各自定义 `SolarTermResult` 而漂移。
+ * @returns {{prev:null|{name,ord,utc,jde}, next:null|{name,ord,utc,jde}, daysToNext:number|null}}
+ */
+export function solarTermResultAt(jde) {
+  let prev = null, next = null, bestP = -Infinity, bestN = Infinity;
+  for (let o = 0; o < 24; o++) {
+    const t = termJdeNear(o, jde);
+    if (!t) continue;
+    if (t.jde <= jde && t.jde > bestP) { bestP = t.jde; prev = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde }; }
+    if (t.jde >= jde && t.jde < bestN) { bestN = t.jde; next = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde }; }
+  }
+  const daysToNext = next ? Number(((next.jde - jde)).toFixed(4)) : null;
+  return { prev, next, daysToNext };
+}
+
 // ---- pillars ----
 export function dayPillar(jdn) {
-  const idx = (((55 + (Math.floor(jdn + 0.5) - 2451545)) % 60) + 60) % 60;
+  // 锚点 1949-10-01 = 甲子日（idx 0）。当前 2000-01-01 = 戊午日。
+  const idx = (((54 + (Math.floor(jdn + 0.5) - 2451545)) % 60) + 60) % 60;
   return { gan: GANS[idx % 10], zhi: ZHIS[idx % 12], index: idx };
 }
 export function yearPillar(jde) {

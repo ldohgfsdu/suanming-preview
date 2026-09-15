@@ -22,6 +22,15 @@
     </view>
   </view>
 
+  <!-- 出生时间 / 真太阳时（单一时间源：仅展示，不重复计算） -->
+  <view class="kv" wx:if="{{r.bjTime}}"><text class="k">出生时间（北京时间）</text><text class="v">{{r.bjTime}}</text></view>
+  <view class="kv" wx:if="{{r.tsDateTime}}">
+    <text class="k">真太阳时<text wx:if="{{r.crossDay}}" class="kv-tag">跨日</text></text>
+    <text class="v">{{r.tsDateTime}}</text>
+  </view>
+  <view class="kv" wx:if="{{r.trueSolar && r.trueSolar !== '未提供地点'}}"><text class="k">修正量</text><text class="v">{{r.trueSolar}}</text></view>
+  <view class="cross-day-banner" wx:if="{{r.crossDay && r.canonDateText}}">真太阳时校正后已进入次日（{{r.canonDateText}}），相关历法数据均按校正后的时间重新计算。</view>
+
   <view class="divider"></view>
 
   <view class="section-title">五行四柱字数</view>

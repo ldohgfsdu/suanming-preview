@@ -57,6 +57,7 @@
 .solar { font-size: 32rpx; font-weight: 600; color: var(--accent); }
 .meta { font-size: 22rpx; color: var(--muted); }
 .kv { display: flex; align-items: baseline; justify-content: space-between; padding: 12rpx 0; }
+.tag-x { display: inline-block; margin-left: 8rpx; padding: 1rpx 10rpx; border-radius: 6rpx; font-size: 18rpx; color: var(--accent, #12a173); background: rgba(18,161,115,0.12); }
 .k { color: var(--muted); font-size: 25rpx; }
 .v { font-size: 28rpx; text-align: right; }
 .card-foot {

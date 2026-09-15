@@ -22,9 +22,13 @@
       </view>
       <view class="body">
         <view class="kv"><text class="k">年柱</text><text class="v">{{item.yearGanzhi}}</text></view>
-        <view class="kv"><text class="k">日柱</text><text class="v">{{item.dayGanzhi}}</text></view>
+        <view class="kv"><text class="k">日柱</text><text class="v">{{item.dayGanzhi}}<text wx:if="{{item.crossDay}}" class="tag-x">跨日</text></text></view>
+        <view class="kv"><text class="k">出生时间</text><text class="v">{{item.hourLabel || '时辰未知'}}</text></view>
+        <view class="kv" wx:if="{{item.tsDateTime}}"><text class="k">真太阳时</text><text class="v">{{item.tsDateTime}}</text></view>
+        <view class="kv" wx:if="{{item.trueSolar}}"><text class="k">修正量</text><text class="v">{{item.trueSolar}}</text></view>
         <view class="kv"><text class="k">性别</text><text class="v">{{item.gender}}</text></view>
         <view class="kv"><text class="k">地点</text><text class="v">{{item.placeLabel}}</text></view>
+        <view class="kv" wx:if="{{item.placeCoord}}"><text class="k">坐标</text><text class="v">{{item.placeCoord}}</text></view>
       </view>
       <view class="card-foot">
         <view class="act act-del" data-id="{{item.id}}" bindtap="onDelete">删除</view>

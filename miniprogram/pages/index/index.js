@@ -4,7 +4,7 @@
 // 纯天文历法事实，不含任何预测、判定或运气换算。
 // 相对导入保持带 .js 扩展名，与 lib/ 内既有约定一致。
 
-import { computeArchive, ELEMENT_NAME as ELEM_NAME, trueSolarToLocal } from '../../lib/archive.js';
+import { computeArchive, ELEMENT_NAME as ELEM_NAME } from '../../lib/archive.js';
 import { gregorianToJde, dayPillar, hourPillar } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { PROVINCE_NAMES, cityNames, districtNames, locateProvinceCity } from '../../lib/place.js';
@@ -161,7 +161,7 @@ Page({
       hourLabel: `${s.name}（${s.range}）`,
       hasResult: false,
       result: null,
-    });
+    }, () => wx.showToast({ title: '已更新为当前日期与时辰', icon: 'none' }));
     this.initSolar(t);
     this.initLunarToToday(y, m, d);
     this.buildToday(y, m, d);   // 今日天时卡同步刷新（含当前时刻）
@@ -446,70 +446,69 @@ Page({
     if (!input) { wx.showToast({ title: '请检查出生日期', icon: 'none' }); return; }
     const lon = this.finalizeLon();
     const hour = this.data.hour;
+    // —— 单一时间事实源：整个生成链路只在这里排盘一次 ——
+    let f = null;
+    try {
+      f = computeArchive(input.y, input.m, input.d, hour, lon);
+    } catch (e) { wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' }); return; }
 
-    // 真太阳时修正判定：仅当「已知时辰 + 提供了出生地点经度」时评估。
-    // 单一时间事实源：先把出生时刻按真太阳时修正为“本地历日 + 太阳时”，
-    // 若跨日或跨时辰，则用 Modal 让用户确认后，按修正结果生成档案。
-    if (hour >= 0 && Number.isFinite(lon)) {
-      try {
-        const sh = trueSolarToLocal(input.y, input.m, input.d, hour, lon);
-        const dayChanged = sh.dayChanged;
-        const rawIdx = shichenIndexOfHour(hour);
-        const corIdx = shichenIndexOfHour(sh.canonHour);
-        const timeChanged = corIdx !== rawIdx;
-        if (dayChanged || timeChanged) {
-          const capped = computeArchive(input.y, input.m, input.d, hour, lon); // 权威结果
-          const oldDp = dayPillar(gregorianToJde(input.y, input.m, input.d));
-          const oldHp = hourPillar(oldDp.index % 10, hour);
-          const newDp = capped.four.day; const newHp = capped.four.hour;
-          // 结构化：只列真实变化的柱（日柱/时柱），其余不显示
-          const pieces = [];
-          if (capped.dayShift !== 0 && newDp.ganz !== oldDp.ganz) pieces.push(`日柱：${oldDp.ganz} → ${newDp.ganz}`);
-          else if (capped.dayShift !== 0) pieces.push(`日历日：${input.y}-${input.m}-${input.d} → ${sh.dateText}`);
-          if (newHp && oldHp && newHp.ganz !== oldHp.ganz) pieces.push(`时柱：${oldHp.ganz} → ${newHp.ganz}`);
-          if (pieces.length === 0 && corIdx !== rawIdx) pieces.push(`时辰：${SHICHEN[rawIdx].name} → ${SHICHEN[corIdx].name}`);
-          const title = dayChanged ? '真太阳时校正跨日' : '时辰变更提示';
-          const offTxt = `${sh.offsetMinutes > 0 ? '+' : ''}${sh.offsetMinutes} 分钟`;
-          const bodyHead = dayChanged
-            ? `原始时间：${input.y}年${input.m}月${input.d}日 ${this.data.hourLabel}\n真太阳时：进入${sh.dateText} ${SHICHEN[corIdx].range}\n`
-            : `您选择的出生时刻 ${this.data.hourLabel}（${SHICHEN[rawIdx].name}），经真太阳时修正（${offTxt}）后，实际天文时辰为 ${SHICHEN[corIdx].name}（${SHICHEN[corIdx].range}）。\n`;
-          const content = bodyHead
-            + (pieces.length ? '本档案将按真太阳时重新计算相关干支。\n\n' + pieces.join('\n') : '');
-          this.__wheel = true;
-          wx.showModal({
-            title,
-            content,
-            confirmText: '确认生成',
-            cancelText: '返回修改',
-            success: (r) => {
-              this.__wheel = false;
-              if (!r.confirm) return; // 返回修改：不生成，留在表单
-              this.setData({ generating: true });
-              try {
-                this.commitResult(input, lon, this.data.hour); // computeArchive 内部已按真太阳时统一重算
-              } finally {
-                this.setData({ generating: false });
-              }
-            },
-            fail: () => { this.__wheel = false; },
-          });
-          return;
-        }
-      } catch (e) { /* 修正计算异常则回退为原时辰生成 */ }
+    // 真太阳时跨时辰/跨日确认：仅当「已知时辰 + 提供了经度」时评估。
+    // 跨日/跨时辰时先用 Modal 让用户确认，确认后再按同一份 f 生成（不重复排盘）。
+    if (hour >= 0 && Number.isFinite(lon) && f.trueSolar
+      && f.trueSolar.canonHour != null && !f.trueSolar.degraded) {
+      const dayChanged = f.trueSolar.dayChanged;
+      const rawIdx = shichenIndexOfHour(hour);
+      const corIdx = shichenIndexOfHour(f.trueSolar.canonHour);
+      const timeChanged = corIdx !== rawIdx;
+      if (dayChanged || timeChanged) {
+        const oldDp = dayPillar(gregorianToJde(input.y, input.m, input.d));
+        const oldHp = hourPillar(oldDp.index % 10, hour);
+        const newDp = f.four.day; const newHp = f.four.hour;
+        // 结构化：只列真实变化的柱（日柱/时柱），其余不显示
+        const pieces = [];
+        if (f.dayShift !== 0 && newDp.ganz !== oldDp.ganz) pieces.push(`日柱：${oldDp.ganz} → ${newDp.ganz}`);
+        else if (f.dayShift !== 0) pieces.push(`日历日：${input.y}-${input.m}-${input.d} → ${f.trueSolar.canonDateText}`);
+        if (newHp && oldHp && newHp.ganz !== oldHp.ganz) pieces.push(`时柱：${oldHp.ganz} → ${newHp.ganz}`);
+        if (pieces.length === 0 && corIdx !== rawIdx) pieces.push(`时辰：${SHICHEN[rawIdx].name} → ${SHICHEN[corIdx].name}`);
+        const title = dayChanged ? '真太阳时校正跨日' : '时辰变更提示';
+        const offTxt = `${f.trueSolar.offsetMinutes > 0 ? '+' : ''}${f.trueSolar.offsetMinutes} 分钟`;
+        const bodyHead = dayChanged
+          ? `原始时间：${input.y}年${input.m}月${input.d}日 ${this.data.hourLabel}\n真太阳时：进入${f.trueSolar.canonDateText} ${SHICHEN[corIdx].range}\n`
+          : `您选择的出生时刻 ${this.data.hourLabel}（${SHICHEN[rawIdx].name}），经真太阳时修正（${offTxt}）后，实际天文时辰为 ${SHICHEN[corIdx].name}（${SHICHEN[corIdx].range}）。\n`;
+        const content = bodyHead
+          + (pieces.length ? '本档案将按真太阳时重新计算相关干支。\n\n' + pieces.join('\n') : '');
+        this.__wheel = true;
+        wx.showModal({
+          title,
+          content,
+          confirmText: '确认生成',
+          cancelText: '返回修改',
+          success: (r) => {
+            this.__wheel = false;
+            if (!r.confirm) return; // 返回修改：不生成，留在表单
+            this.setData({ generating: true });
+            try {
+              this.commitResult(input, lon, f);
+            } finally {
+              this.setData({ generating: false });
+            }
+          },
+          fail: () => { this.__wheel = false; },
+        });
+        return;
+      }
     }
     this.setData({ generating: true });
     try {
-      this.commitResult(input, lon, this.data.hour);
+      this.commitResult(input, lon, f);
     } finally {
       this.setData({ generating: false });
     }
   },
-  commitResult(input, lon, effHour) {
+  commitResult(input, lon, f) {
     lon = lon != null ? lon : this.finalizeLon();
-    const effH = effHour != null ? effHour : this.data.hour;
     const { y, m, d } = input;
     try {
-      const f = computeArchive(y, m, d, effH, lon);
       // 四柱固定为 4 列：年/月/日/时。时辰未知时，时柱以弱化的“— / 时辰未知”占位。
       const hourP = f.four.hour;
       const pillars = [
@@ -552,6 +551,14 @@ Page({
         moonAge: f.moon ? fmtAgeDays(f.moon.ageDays) : '',
         moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
         trueSolar: f.trueSolar.degraded ? '未提供地点' : fmtTrueSolarMinutes(f.trueSolar.offsetMinutes),
+        bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:00` : null,
+        tsDateTime: (f.trueSolar && f.trueSolar.canonHour != null && !f.trueSolar.degraded)
+          ? (f.trueSolar.dayChanged
+            ? `${f.trueSolar.canonDateText} ${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`
+            : `${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`)
+          : null,
+        crossDay: !!(f.trueSolar && f.trueSolar.dayChanged),
+        canonDateText: (f.trueSolar && f.trueSolar.canonDateText) || null,
         hourLabel2: this.data.hour >= 0
           ? (f.trueSolar && f.trueSolar.canonHour != null && !f.trueSolar.degraded
             ? `${SHICHEN[shichenIndexOfHour(f.trueSolar.canonHour)].name}（真太阳时）`
@@ -599,6 +606,21 @@ Page({
       dayGanzhi: f.four.day ? f.four.day.ganz : '',
       gender: this.data.gender,
       placeLabel: (lon != null && this.data.placeLabel) ? this.data.placeLabel : '未选择地点',
+      placeCoord: (lon != null && !this.data.lonActive)
+        ? `东经 ${Number(this.data.placeLon).toFixed(1)}° · 北纬 ${Number(this.data.placeLat).toFixed(1)}°`
+        : (lon != null ? fmtLng(lon) : ''),
+      hour: this.data.hour,
+      hourLabel: this.data.hourLabel,
+      hourIdx: this.data.hourIdx,
+      // 真太阳时跨日/修正（单一时间源，重新打开不改算）
+      bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:00` : null,
+      tsDateTime: (f.trueSolar && !f.trueSolar.degraded && f.trueSolar.canonHour != null)
+        ? (f.trueSolar.dayChanged
+          ? `${f.trueSolar.canonDateText} ${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`
+          : `${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`)
+        : null,
+      trueSolar: f.trueSolar.degraded ? '' : fmtTrueSolarMinutes(f.trueSolar.offsetMinutes),
+      crossDay: !!(f.trueSolar && f.trueSolar.dayChanged),
     };
     try {
       const list = wx.getStorageSync(HISTORY_KEY) || [];
@@ -636,6 +658,12 @@ Page({
       set.solarDateLabel = r.solar;
     }
     if (r.gender === '男' || r.gender === '女') set.gender = r.gender;
+    // 恢复出生时刻（时辰），让“重新生成”与历史记录保持一致（时间单一源）
+    if (Number.isInteger(r.hour) && r.hour >= 0 && r.hour < 24) {
+      set.hour = r.hour;
+      set.hourIdx = (Number.isInteger(r.hourIdx) && r.hourIdx >= 0) ? r.hourIdx : (shichenIndexOfHour(r.hour) + 1);
+      set.hourLabel = r.hourLabel || SHICHEN[shichenIndexOfHour(r.hour)].name;
+    }
     set.hasResult = false;
     set.result = null;
     this.setData(set);

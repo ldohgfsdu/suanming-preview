@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   computeArchive, monthPillar, hourPillar, tally, lunarAge, newMoonJde, lunarPhase, trueSolarToLocal,
 } from '../../miniprogram/lib/archive.js';
-import { dayPillar, gregorianToJde } from '../../miniprogram/lib/engine.js';
+import { dayPillar, gregorianToJde, yearPillar } from '../../miniprogram/lib/engine.js';
 
 test('monthPillar.liChun starts 寅 month', () => {
   const jd = gregorianToJde(2023, 2, 5); // 次日仍在寅月
@@ -106,4 +106,52 @@ test('无经度-无真时修正：日柱仍用输入日', () => {
   const d15 = dayPillar(gregorianToJde(2024, 6, 15));
   assert.strictEqual(a.four.day.ganz, d15.gan + d15.zhi);
   assert.strictEqual(a.solar.d, 15);
+});
+
+test('非边界日期：年/月柱稳定且与地点无关（2020-06-15）', () => {
+  for (const h of [6, 12, 18]) {
+    for (const lon of [null, 87.8]) {
+      const f = computeArchive(2020, 6, 15, h, lon);
+      assert.strictEqual(f.four.year.ganz, '庚子');
+      assert.strictEqual(f.four.month.ganz, '壬午');
+      assert.strictEqual(f.four.day.ganz, '庚寅'); // 未跨日
+      assert.strictEqual(f.dayShift, 0);
+    }
+  }
+});
+
+test('年/月柱由绝对出生瞬间重判（跨立春：2024-02-04 邑）', () => {
+  // absolute birth instant = gregorianToJde(y,m,d)+(h-12)/24（与地点无关的太阳黄经）
+  const abs = (y, m, d, h) => gregorianToJde(y, m, d) + (h - 12) / 24;
+  for (const h of [0, 12]) {
+    const f = computeArchive(2024, 2, 4, h, 87.8);
+    const yp = yearPillar(abs(2024, 2, 4, h));
+    const mp = monthPillar(abs(2024, 2, 4, h), yp.ganzhiYear);
+    assert.strictEqual(f.four.year.ganz, yp.gan + yp.zhi);
+    assert.strictEqual(f.four.month.ganz, mp.ganzhi);
+  }
+  // 立春前生→癸卯，立春后→甲辰
+  assert.strictEqual(computeArchive(2024, 2, 4, 0, 87.8).four.year.ganz, '癸卯');
+  assert.strictEqual(computeArchive(2024, 2, 4, 12, 87.8).four.year.ganz, '甲辰');
+});
+
+test('修正量≈0 时四柱与原始一致（2024-04-14 经度120）', () => {
+  const w = computeArchive(2024, 4, 14, 12, 120);
+  assert.ok(Math.abs(w.trueSolar.offsetMinutes) < 1);   // EoT≈0
+  assert.strictEqual(w.dayShift, 0);
+  const r = computeArchive(2024, 4, 14, 12, null);      // 原非修正路径
+  assert.strictEqual(w.trueSolar.degraded, false);
+  assert.strictEqual(w.four.year.ganz, r.four.year.ganz);
+  assert.strictEqual(w.four.month.ganz, r.four.month.ganz);
+  assert.strictEqual(w.four.day.ganz, r.four.day.ganz);
+  assert.strictEqual(w.four.hour.ganz, r.four.hour.ganz);
+});
+
+test('未知出生时刻不伪造时柱：年/月/日存在、时柱为 null', () => {
+  const u = computeArchive(2020, 6, 15, -1, 87.8);
+  assert.strictEqual(u.four.hour, null);
+  assert.ok(u.four.year && u.four.year.ganz);
+  assert.ok(u.four.month && u.four.month.ganz);
+  assert.ok(u.four.day && u.four.day.ganz);
+  assert.strictEqual(u.dayShift, 0);
 });

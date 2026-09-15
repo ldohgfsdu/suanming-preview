@@ -242,6 +242,7 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
       offsetMinutes: tSolar, degraded,
       canonHour: canon ? Number(canon.canonHour.toFixed(3)) : null,
       canonDate: canon ? { y: canon.canonDate.y, m: canon.canonDate.m, d: canon.canonDate.d } : null,
+      canonDateText: canon ? canon.dateText : null,
       dayChanged: canon ? canon.dayChanged : false,
     },
     moon: { ageDays: Number(lunarAge(jd).ageDays.toFixed(4)), name: moon.name, sym: moon.sym },

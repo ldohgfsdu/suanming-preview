@@ -17,11 +17,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newMoonJde, computeArchive } from '../../miniprogram/lib/archive.js';
-import { termJde, gregorianToJde, jdeToGregorian } from '../../miniprogram/lib/engine.js';
+import { termJde, gregorianToJde, jdeToGregorian, solarLon } from '../../miniprogram/lib/engine.js';
+import { solarLongitude } from '../../miniprogram/lib/solarlon.js';
 import { solarToLunar } from '../../miniprogram/lib/lunar.js';
 
-const TERM_TOL_MIN = 8;
+const TERM_TOL_MIN = 3;   // 高精度视黄经后对权威表 ≤~1-2min（原 Meeus ±8min 已升级）
 const NEWMOON_TOL_MIN = 6;
+
+/** 高精度视黄经 lon 在权威分至与时角的误差容差（度）：≤0.02° ≈ ≤1.8 分。 */
+const SOLAR_LON_DEG_TOL = 0.02;
 
 /** JDE -> 北京民用时 (UTC+8)：{y,m,d,H,M}。 */
 function bjOf(jde) {
@@ -112,10 +116,43 @@ test('A7 端午锚点：2020 五月初五 = 2020-06-25', () => {
 });
 
 // =============================== 节气 ===============================
-test('A8 分至锚点（2024）±8min', () => {
+test('A8 分至锚点（2024）±3min', () => {
   okTerm('春分', 2024, 5, { y: 2024, m: 3, d: 20, H: 11, M: 6 }, TERM_TOL_MIN);
   okTerm('秋分', 2024, 17, { y: 2024, m: 9, d: 22, H: 20, M: 44 }, TERM_TOL_MIN);
   okTerm('冬至', 2024, 23, { y: 2024, m: 12, d: 21, H: 17, M: 21 }, TERM_TOL_MIN);
+});
+
+// ================ 高精度视黄经：对权威分至直接对拍（≤0.02°，≈≤1.8min） ================
+test('A17 高精度视黄经在权威分至引时 ≈0（astropixels）', () => {
+  // astropixels.com 权威分至时刻（UTC，到分钟）。此刻太阳视黄经应为 0/90/180/270。
+  const A = [
+    [2024, 3, 20, 3, 7, 0],
+    [2024, 6, 20, 20, 51, 90],
+    [2024, 9, 22, 12, 44, 180],
+    [2024, 12, 21, 9, 20, 270],
+    [2026, 3, 20, 14, 46, 0],
+    [2026, 6, 21, 8, 25, 90],
+    [2026, 9, 23, 0, 6, 180],
+    [2026, 12, 21, 20, 50, 270],
+    [2030, 3, 20, 13, 51, 0],
+    [2030, 6, 21, 7, 33, 90],
+    [2030, 12, 21, 20, 9, 270],
+  ];
+  for (const [y, m, d, h, mi, trg] of A) {
+    const jde = (Date.UTC(y, m - 1, d, h, mi)) / 86400000 + 2440587.5;
+    const lon = solarLongitude(jde);
+    let e = (lon - trg + 180) % 360 - 180;
+    if (e > 180) e -= 360;
+    if (e < -180) e += 360;
+    assert.ok(Math.abs(e) <= SOLAR_LON_DEG_TOL,
+      `${y}-${m}-${d} 权威分至在时刻视经应≈${trg}°，实得 ${lon.toFixed(4)}°，误差 ${e.toFixed(4)}°`);
+  }
+});
+// engine.solarLon = 高精度（单一事实源）
+test('A18 engine.solarLon 与高精度 solarlon.solarLongitude 一致', () => {
+  for (const jd of [2460000, 2460390.5, 2461020]) {
+    assert.ok(Math.abs(solarLon(jd) - solarLongitude(jd)) < 1e-9, `jd=${jd} 应完全一致`);
+  }
 });
 
 test('A9 全年 24 节气：严格递增、落在合理月份、年一致', () => {

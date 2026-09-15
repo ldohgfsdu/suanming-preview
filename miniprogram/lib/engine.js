@@ -3,9 +3,8 @@
  * Scope/precision notes kept in ASCII:
  *   - Gregorian<->Julian Day exact (Meeus Fliegel inverse).
  *   - gregorianToJde(y,m,d) returns the JDN for that day (noon coordinate epoch) as an integer.
- *   - Solar apparent longitude (Meeus low precision), verified against equinox/solstice.
- *     Model civil-time envelope is about +/-5-6 min from authoritative tables; astronomy-audit
- *     regressions assert an explicit tolerance of +/-8 min.
+ *   - Solar apparent longitude: high-precision VSOP87+岁正+星动+光行差+FK5 (lib/solarlon.js),
+ *     error vs authoritative tables <= ~0.2 min. Low-precision Meeus kept in solarLongitudeLow.
  *   - Each solar term solved by bisection where apparent lon = 285+15*ord (deg).
  *   - Day pillar anchored: 1949-10-01 = 甲子日 (idx 0) => 2000-01-01 = 戊午日 (idx 55).
  *   - Lunar phases (朔望) solved by Meeus new-moon; lunisolar month table built build-time
@@ -13,6 +12,8 @@
  *   - Range 1900-2100; out-of-range throws.
  */
 'use strict';
+
+import { solarLongitude } from './solarlon.js';
 
 export const GANS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 export const ZHIS = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -30,7 +31,6 @@ const TERM_REF_DAY = [5, 20, 4, 19, 5, 20, 5, 20, 5, 21, 5, 21, 7, 22, 7, 23, 7,
 const D2R = Math.PI / 180;
 function mod360(x) { let v = x % 360; if (v < 0) v += 360; return v; }
 function angDiff(a, b) { let d = mod360(a - b); if (d > 180) d -= 360; return d; }
-function toRad(d) { return d * D2R; }
 
 // ---- date <-> JDN ----
 // ---- date <-> JDN ----
@@ -65,19 +65,11 @@ export function jdeToGregorian(jde) {
   return { y: year, m: month, d: di, h: (day - di) * 24 };
 }
 
-// ---- solar apparent longitude (Meeus low precision) ----
+// ---- solar apparent longitude (高精度视黄经，见 solarlon.js) ----
+// 生产主路径：完整 VSOP87+岁正+星动+光行差+FK5。对权威年表误差 ≤~0.2 min。
+// 原 Meeus 低精度（engine 内联）已移入 solarlon.solarLongitudeLow 作为兼容/blob。
 export function solarLon(jde) {
-  const T = (jde - 2451545) / 36525;
-  let L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
-  const M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) % 360;
-  const Mr = toRad(M);
-  const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mr)
-    + (0.019993 - 0.000101 * T) * Math.sin(2 * Mr)
-    + 0.000289 * Math.sin(3 * Mr);
-  L0 += C;
-  const om = 125.04 - 1934.136 * T;
-  L0 -= 0.00569 + 0.00478 * Math.sin(toRad(om));
-  return mod360(L0);
+  return solarLongitude(jde);
 }
 function zcross(a, b, tgt) { return angDiff(b, tgt) * angDiff(a, tgt) <= 0; }
 

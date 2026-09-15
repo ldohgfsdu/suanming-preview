@@ -25,6 +25,6 @@ export default [
     },
   },
   {
-    ignores: ['node_modules/', 'dist/', 'dist-test/', '.git/', 'miniprogram/', 'package-lock.json'],
+    ignores: ['node_modules/', 'dist/', 'dist-test/', '.git/', 'miniprogram/', '.tmp/', 'package-lock.json'],
   },
 ];

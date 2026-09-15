@@ -16,6 +16,7 @@
     "test:unit": "npm run test:build && npm run test && npm run test:mjs",
     "test:all": "npm run build:check && npm run test:unit",
     "build:check": "npm run typecheck && npm run lint",
+    "gen:ephemeris": "node scripts/gen-ephemeris.mjs",
     "preinstall": "node scripts/check-node-version.mjs"
   },
   "devDependencies": {

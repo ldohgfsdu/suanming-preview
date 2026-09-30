@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "test": "node --test --experimental-vm-modules dist-test/tests/unit",
     "test:mjs": "node --test --experimental-vm-modules tests/unit",
-    "test:build": "node -e \"fs.rmSync('dist-test',{recursive:true,force:true})\" && tsc -p tsconfig.test.json",
+    "test:build": "node scripts/_clean-dist.mjs && tsc -p tsconfig.test.json",
     "test:unit": "npm run test:build && npm run test && npm run test:mjs",
     "test:all": "npm run build:check && npm run test:unit",
     "build:check": "npm run typecheck && npm run lint",

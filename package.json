@@ -8,6 +8,8 @@
     "node": "18.20.4"
   },
   "scripts": {
+    "gate:node": "node scripts/check-node-version.mjs verify-node",
+    "gate": "node scripts/run-gate.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint .",
     "test": "node --test --experimental-vm-modules dist-test/tests/unit",

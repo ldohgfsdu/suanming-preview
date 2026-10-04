@@ -75,7 +75,6 @@ Page({
 
     let y = 280;
     const rows = [
-      ['日柱纳音', r.nayin],
       ['农历', r.lunarText || '—'],
       ['出生地点', (r.placeCoord ? r.placeName + ' · ' + r.placeCoord : r.placeName)],
       ['上一个节气', r.prevTerm],

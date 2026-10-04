@@ -12,7 +12,6 @@
   </view>
   <view class="hour-unknown-hint" wx:if="{{r.hourUnknown}}">出生时刻未选择，时柱以「时辰未知」占位。</view>
 
-  <view class="kv"><text class="k">日柱纳音</text><text class="v">{{r.nayin}}</text></view>
   <view class="kv" wx:if="{{r.lunarText}}"><text class="k">农历</text><text class="v">{{r.lunarText}}<text wx:if="{{r.lunarApprox}}" class="approx">（朔日前后±1天）</text></text></view>
   <view class="kv kv-place">
     <text class="k">出生地点</text>

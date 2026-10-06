@@ -166,6 +166,67 @@ test('I11 缓存键语义：轻量缓存键不得冒充冻结契约 docHash', ()
   assert.match(page, /payload\.usedAI && cacheKey/, '仅 AI 产出入缓存');
 });
 
+test('I12 云函数服务端校验：入参事实须过取值域校验后才进模型', () => {
+  const fn = readFileSync(resolve(__dirname, '../../cloudfunctions/insight/index.js'), 'utf8');
+  // 1) 必须存在校验函数与白名单常量
+  assert.match(fn, /function validateFacts\(/, '云函数须有事实校验');
+  ['GANS', 'ZHIS', 'WUXING', 'PILLAR_LABELS'].forEach((c) => {
+    assert.match(fn, new RegExp('const ' + c + ' ='), `须定义 ${c} 白名单`);
+  });
+  // 2) main 必须在调用模型前拦截非法事实
+  assert.match(fn, /invalid_facts/, '非法事实须拒绝');
+  const mainIdx = fn.indexOf('exports.main');
+  assert.ok(mainIdx >= 0);
+  const main = fn.slice(mainIdx);
+  assert.ok(main.indexOf('validateFacts(facts)') < main.indexOf('callModel('),
+    '校验必须先于模型调用');
+  // 3) 两份副本须一致（部署读 miniprogram 那份）
+  const mirror = readFileSync(resolve(__dirname, '../../miniprogram/cloudfunctions/insight/index.js'), 'utf8');
+  assert.equal(mirror, fn, 'cloudfunctions/ 与 miniprogram/cloudfunctions/ 须同步');
+});
+
+test('I13 事实校验逻辑：非法干支/五行名/超长 payload 均被拒', () => {
+  // 从云函数源码中抽出 validateFacts 与其常量，在本测试环境直接执行
+  const fn = readFileSync(resolve(__dirname, '../../cloudfunctions/insight/index.js'), 'utf8');
+  const src = fn.slice(fn.indexOf('const GANS'), fn.indexOf('function buildMessages'));
+  // eslint-disable-next-line no-new-func
+  const factory = new Function(src + '\n return validateFacts;');
+  const validateFacts = factory();
+
+  const ok = {
+    pillars: [{ label: '年', gan_zhi: '甲子', element: '木' }],
+    solarTerm: { prev: '立春', next: '雨水' },
+    solarTime: { corrected: '+14分', day_changed: false },
+    lunar: '正月初一',
+    wuxing: [{ name: '木', literal_count: 2 }],
+  };
+  assert.deepEqual(validateFacts(ok), [], '合法事实应通过');
+
+  // 非法干支（伪造的「甲X」）
+  const badGanzhi = JSON.parse(JSON.stringify(ok));
+  badGanzhi.pillars[0].gan_zhi = '甲X';
+  assert.ok(validateFacts(badGanzhi).some((e) => e.indexOf('ganzhi_invalid') === 0), '非法干支须拒绝');
+
+  // 非法五行名
+  const badWx = JSON.parse(JSON.stringify(ok));
+  badWx.wuxing[0].name = '霸王色';
+  assert.ok(validateFacts(badWx).some((e) => e.indexOf('wuxing_name') === 0), '非法五行名须拒绝');
+
+  // 非整数计数
+  const badCount = JSON.parse(JSON.stringify(ok));
+  badCount.wuxing[0].literal_count = 2.5;
+  assert.ok(validateFacts(badCount).some((e) => e.indexOf('wuxing_count') === 0), '非整数计数须拒绝');
+
+  // day_changed 非布尔
+  const badDay = JSON.parse(JSON.stringify(ok));
+  badDay.solarTime.day_changed = 'yes';
+  assert.ok(validateFacts(badDay).indexOf('day_changed_shape') >= 0, 'day_changed 须为布尔');
+
+  // 非对象 / 空柱
+  assert.ok(validateFacts(null).indexOf('facts_not_object') >= 0);
+  assert.ok(validateFacts({ pillars: [] }).indexOf('pillars_shape') >= 0);
+});
+
 test('I9 buildFacts：五行只输出字面计数，不带旺衰/强弱语义字段', () => {
   const insight = readFileSync(resolve(__dirname, '../../miniprogram/lib/insight.js'), 'utf8');
   const m = insight.match(/wuxing:[\s\S]{0,200}?\}\)\)/);

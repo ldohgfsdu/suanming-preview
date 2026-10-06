@@ -67,6 +67,72 @@ function jsonReply(ok, payload) {
   return Object.assign({ ok: ok }, payload);
 }
 
+// ---------------- 入参事实校验（服务端不信任客户端） ----------------
+//
+// 背景：facts 由客户端构建后上行。若服务端照单全收，客户端可伪造事实喂给模型，
+// Guard 的「不得发明干支」就退化成「只对自己声称的事实负责」。
+// 本校验把入参约束在 P0 六类事实的合法取值域内，非法即拒绝（不进入模型）。
+//
+// 说明：彻底方案是服务端重算事实，但事实层（miniprogram/lib）为 ESM 且面向小程序环境，
+// 云函数（CommonJS / Node16）无法直接复用，故此处为**结构 + 取值域**校验，是可落地的务实上限。
+
+const GANS = '甲乙丙丁戊己庚辛壬癸';
+const ZHIS = '子丑寅卯辰巳午未申酉戌亥';
+const WUXING = ['木', '火', '土', '金', '水'];
+const PILLAR_LABELS = ['年', '月', '日', '时'];
+const FACTS_MAX_CHARS = 8000; // 防止超大 payload
+
+function validateFacts(facts) {
+  const errors = [];
+  if (!facts || typeof facts !== 'object' || Array.isArray(facts)) return ['facts_not_object'];
+
+  if (JSON.stringify(facts).length > FACTS_MAX_CHARS) errors.push('facts_too_large');
+
+  // 1) 四柱：柱名/五行名/干支取值域
+  if (!Array.isArray(facts.pillars) || facts.pillars.length < 1 || facts.pillars.length > 4) {
+    errors.push('pillars_shape');
+  } else {
+    facts.pillars.forEach((p, i) => {
+      if (!p || typeof p !== 'object') { errors.push('pillar_' + i + '_not_object'); return; }
+      if (p.label != null && PILLAR_LABELS.indexOf(p.label) < 0) errors.push('pillar_label:' + p.label);
+      if (p.element != null && WUXING.indexOf(p.element) < 0) errors.push('pillar_element:' + p.element);
+      if (p.gan_zhi != null) {
+        if (typeof p.gan_zhi !== 'string' || p.gan_zhi.length !== 2) {
+          errors.push('ganzhi_shape:' + p.gan_zhi);
+        } else if (GANS.indexOf(p.gan_zhi[0]) < 0 || ZHIS.indexOf(p.gan_zhi[1]) < 0) {
+          errors.push('ganzhi_invalid:' + p.gan_zhi);
+        }
+      }
+    });
+  }
+
+  // 2) 五行字面计数：名称白名单 + 非负整数
+  if (!Array.isArray(facts.wuxing)) {
+    errors.push('wuxing_not_array');
+  } else {
+    facts.wuxing.forEach((t, i) => {
+      if (!t || typeof t !== 'object') { errors.push('wuxing_' + i + '_not_object'); return; }
+      if (WUXING.indexOf(t.name) < 0) errors.push('wuxing_name:' + t.name);
+      if (typeof t.literal_count !== 'number'
+        || !Number.isInteger(t.literal_count)
+        || t.literal_count < 0) errors.push('wuxing_count:' + t.literal_count);
+    });
+  }
+
+  // 3) 其余字段形态（允许为 null，但类型必须正确）
+  if (facts.solarTerm != null && typeof facts.solarTerm !== 'object') errors.push('solarTerm_shape');
+  if (facts.lunar != null && typeof facts.lunar !== 'string') errors.push('lunar_shape');
+  if (facts.solarTime != null) {
+    if (typeof facts.solarTime !== 'object') {
+      errors.push('solarTime_shape');
+    } else if (typeof facts.solarTime.day_changed !== 'boolean') {
+      errors.push('day_changed_shape');
+    }
+  }
+
+  return Array.from(new Set(errors));
+}
+
 /** 从模型回复中稳健提取 JSON（容忍代码块包裹与前后缀）。 */
 function extractJson(text) {
   if (!text) return null;
@@ -162,6 +228,13 @@ exports.main = async (event) => {
 
   if (action !== 'interpret') return jsonReply(false, { reason: 'bad_action' });
   if (!docHash || !schemaVersion || !facts) return jsonReply(false, { reason: 'missing_doc_fields' });
+
+  // 入参事实校验：非法事实一律拒绝，不进入模型（防客户端伪造）
+  const factErrors = validateFacts(facts);
+  if (factErrors.length) {
+    console.error('[insight] facts 校验未通过：', factErrors.join(','));
+    return jsonReply(false, { reason: 'invalid_facts:' + factErrors.join(',') });
+  }
 
   let hint = null;
   let lastError = 'unknown';

@@ -2,7 +2,7 @@
 
   <!-- 档案头：以日期为主标题，方法来源为副标题（不重复导航栏标题） -->
   <view class="result-title">{{r.solarCN}} <text class="result-tag">生辰历法档案</text></view>
-  <view class="result-sub">由真实天文历法计算 · 不含预测与判定</view>
+  <view class="result-sub">由真实天文历法计算</view>
 
   <view class="pillars" wx:if="{{r.pillars && r.pillars.length}}">
     <view class="pillar {{item.unknown ? 'is-unknown' : ''}}" wx:for="{{r.pillars}}" wx:key="label">
@@ -70,7 +70,7 @@
   </view>
   <view class="insight-loading" wx:if="{{insightLoading}}">
     <text class="loading-dot">正在生成文化解读…</text>
-    <text class="loading-sub">解读基于上方已算好的历法事实，不改变任何排盘结果</text>
+    <text class="loading-sub">解读基于上方已算好的历法事实，仅作文化背景补充</text>
   </view>
   <view class="insight-body" wx:elif="{{insightSections && insightSections.length}}">
     <view class="insight-item" wx:for="{{insightSections}}" wx:key="id">
@@ -91,7 +91,7 @@
     </view>
   </view>
 
-  <view class="note">本档案由真实天文历法计算得出：结果均源自真太阳时、天文节气等历法数据，仅供传统文化研究与娱乐参考，不含任何预测与判定。</view>
+  <view class="note">本档案由真实天文历法计算得出：结果均源自真太阳时、天文节气等历法数据，仅供传统文化研究与娱乐参考。</view>
 
   <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>
 

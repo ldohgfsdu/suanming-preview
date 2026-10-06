@@ -1,6 +1,6 @@
 // pages/result/result.js — 独立「历法档案」结果页。
 // 由首页 onGenerate → commitResult 计算后，经 eventChannel 传入完整档案结果并渲染。
-// 纯展示 + 保存档案卡片（canvas 导出），不含任何预测/判定内容。
+// 纯展示 + 保存档案卡片（canvas 导出），仅客观历法数据与文化背景。
 // 另含「历法文化解读」AI 层：AI 只解释已算好的事实，失败自动降级本地规则文本，不阻断主链路。
 import { resolveInsight } from '../../lib/insight.js';
 
@@ -173,7 +173,7 @@ Page({
     ctx.setFontSize(20);
     ctx.setFillStyle(P.foot);
     ctx.setTextAlign('center');
-    ctx.fillText('由真实天文历法计算 · 不含预测与判定', W / 2, H - 30);
+    ctx.fillText('由真实天文历法计算 · 供传统文化研究与娱乐参考', W / 2, H - 30);
     ctx.draw(false, () => {
       wx.canvasToTempFilePath({
         canvasId: 'shareCard',

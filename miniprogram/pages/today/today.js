@@ -1,6 +1,6 @@
 // pages/today/today.js — 今日天时独立页。
 // 展示当日完整的历法档案：四柱干支、农历、节气 bracket、月相月龄、日出日落、真太阳时、五行分布。
-// 全部为真实天文历法计算，纯展示，不含任何预测/判定内容。
+// 全部为真实天文历法计算，纯展示。
 import { computeArchive, ELEMENT_NAME, hourPillar } from '../../lib/archive.js';
 import { dayPillar, gregorianToJde } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
@@ -73,7 +73,6 @@ Page({
     dateText: '',
     lunarText: '',
     ganzhi: { year: '', month: '', day: '' },
-    nayin: '',
     pillars: [],
     tally: [],
     term: { prev: '', next: '', days: '' },
@@ -138,7 +137,6 @@ Page({
           month: f.four.month ? f.four.month.ganz : '—',
           day: f.four.day ? f.four.day.ganz : '—',
         },
-        nayin: f.nayin,
         pillars,
         tally: tallyArr.map((x) => `${x.name}${x.n}`).join(' · ') || '—',
         term: { prev, next, daysToNext },

@@ -161,6 +161,6 @@
     <view class="about-link" bindtap="goAbout"><text>关于本工具 · 算法说明 · 免责声明</text><text class="about-arrow">›</text></view>
   </view>
 
-  <view class="foot-note">历法事实，供传统文化研究与娱乐参考，不预测、不判定</view>
+  <view class="foot-note">历法事实，供传统文化研究与娱乐参考</view>
 
 </view>

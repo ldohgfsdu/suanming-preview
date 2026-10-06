@@ -27,16 +27,6 @@ export const ELEMENT_ZHI = {
   '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water',
 };
 
-// 六甲子纳音 (static, day-cycle index 0..59)
-const NAYIN = [
-  '海中金', '海中金', '炉中火', '炉中火', '大林木', '大林木', '路旁土', '路旁土', '剑锋金', '剑锋金',
-  '山头火', '山头火', '涧下水', '涧下水', '城头土', '城头土', '白蜡金', '白蜡金', '杨柳木', '杨柳木',
-  '泉中水', '泉中水', '屋上土', '屋上土', '霹雳火', '霹雳火', '松柏木', '松柏木', '长流水', '长流水',
-  '沙中金', '沙中金', '山下火', '山下火', '平地木', '平地木', '壁上土', '壁上土', '金箔金', '金箔金',
-  '覆灯火', '覆灯火', '天河水', '天河水', '大驿土', '大驿土', '钗钏金', '钗钏金', '桑柘木', '桑柘木',
-  '大溪水', '大溪水', '沙中土', '沙中土', '天上火', '天上火', '石榴木', '石榴木', '大海水', '大海水',
-];
-
 const D2R = Math.PI / 180;
 function mod360(x) { let v = x % 360; if (v < 0) v += 360; return v; }
 function rd(d) { return d * D2R; }
@@ -324,7 +314,6 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
       hour: hp ? { label: '时', gan: hp.gan, zhi: hp.zhi, ganz: hp.ganzhi, element: ELEMENT[hp.gan] } : null,
     },
     chang_ganzhi: yp.gan + yp.zhi + (mp ? mp.gan + mp.zhi : '') + dp.gan + dp.zhi + (hp ? hp.gan + hp.zhi : ''),
-    nayin: NAYIN[dp.index % 60],
     tally: tally(stems, zhis),
     term: { prev, next, daysToNext },
     trueSolar: {

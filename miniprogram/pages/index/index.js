@@ -1,7 +1,7 @@
 // pages/index/index.js — 东方时间文化档案 首页。
 // 目标：降低输入门槛（出生地点选择，无需知道经度；公历/农历切换；时辰显示现代时间），
 //       增强可信度（今日天时、真太阳时说明、生成过程过渡）。
-// 纯天文历法事实，不含任何预测、判定或运气换算。
+// 纯天文历法事实：时间、节气、干支、太阳时间、农历、五行字面计数。
 // 相对导入保持带 .js 扩展名，与 lib/ 内既有约定一致。
 
 import { computeArchive, ELEMENT_NAME as ELEM_NAME } from '../../lib/archive.js';
@@ -500,14 +500,14 @@ Page({
     // 精确模式：把分钟折算为小数小时（如 14:30 → 14.5），引擎按连续时刻做真太阳时与时辰判定
     const minute = this.data.timeMode === 'precise' ? this.data.minute : 0;
     const hour = this.data.hour >= 0 ? this.data.hour + minute / 60 : -1;
-    // —— 单一时间事实源：整个生成链路只在这里排盘一次 ——
+    // —— 单一时间事实源：整个生成链路只在这里计算一次 ——
     let f = null;
     try {
       f = computeArchive(input.y, input.m, input.d, hour, lon);
     } catch (e) { wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' }); return; }
 
     // 真太阳时跨时辰/跨日确认：仅当「已知时辰 + 提供了经度」时评估。
-    // 跨日/跨时辰时先用 Modal 让用户确认，确认后再按同一份 f 生成（不重复排盘）。
+    // 跨日/跨时辰时先用 Modal 让用户确认，确认后再按同一份 f 生成（不重复计算）。
     if (hour >= 0 && Number.isFinite(lon) && f.trueSolar
       && f.trueSolar.canonHour != null && !f.trueSolar.degraded) {
       const dayChanged = f.trueSolar.dayChanged;
@@ -596,7 +596,6 @@ Page({
           : (lon != null ? fmtLng(lon) : ''),
         pillars,
         hourUnknown: !hourP,
-        nayin: f.nayin,
         tally,
         prevTerm: f.term.prev ? `${f.term.prev.name} ${fmtTermDate(f.term.prev.utc)}` : '—',
         nextTerm: termNow,

@@ -17,7 +17,6 @@ for (const [y, m, d] of CASES) {
     assert.ok(f, `computeArchive(${y}-${m}-${d}) 应返回`);
     assert.ok(f.four && f.four.year && f.four.year.ganz, `四柱年柱齐全 ${y}-${m}-${d}`);
     assert.ok(f.four.day && f.four.day.ganz, `日柱齐全 ${y}-${m}-${d}`);
-    assert.ok(typeof f.nayin === 'string' && f.nayin, `纳音 ${y}-${m}-${d}`);
     assert.ok(f.tally, `五行 ${y}-${m}-${d}`);
     assert.ok(f.term && f.term.next, `下节气 ${y}-${m}-${d}`);
     assert.ok(f.moon && f.moon.name, `月相 ${y}-${m}-${d}`);

@@ -291,3 +291,47 @@
 .tally-fill { transition: width 0.5s ease; }
 .pillar { transition: transform 0.2s ease; }
 
+
+/* ---------------- 出生时刻：时辰 / 精确到分双模式 ---------------- */
+.time-row { align-items: center; }
+
+.time-mode {
+  display: flex;
+  margin-left: auto;
+  padding: 4rpx;
+  background: var(--tint);
+  border-radius: 12rpx;
+}
+.time-mode-item {
+  padding: 10rpx 26rpx;
+  border-radius: 10rpx;
+  font-size: 23rpx;
+  color: var(--muted);
+  transition: background .18s, color .18s;
+}
+.time-mode-item.is-on {
+  background: var(--card);
+  color: var(--accent);
+  font-weight: 500;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+}
+
+.label-sub {
+  font-size: 24rpx;
+  color: var(--muted);
+  padding-left: 16rpx;
+}
+
+.picker-time .picker-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1rpx;
+  min-width: 160rpx;
+  text-align: right;
+}
+
+.time-hint {
+  padding: 2rpx 0 18rpx;
+  color: var(--muted);
+  font-size: 21rpx;
+  line-height: 1.65;
+}

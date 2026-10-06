@@ -1,0 +1,15 @@
+{
+  "envId": "cloud1-d5ggz0479e06a5688",
+  "functions": [
+    {
+      "name": "insight",
+      "timeout": 60,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13",
+      "description": "东方时间文化档案 · 历法文化解读（AI 只做解释，不做判定）",
+      "envVariables": {
+        "INSIGHT_MODEL": "deepseek-v4-flash"
+      }
+    }
+  ]
+}

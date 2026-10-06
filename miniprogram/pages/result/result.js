@@ -1,22 +1,77 @@
 // pages/result/result.js — 独立「历法档案」结果页。
 // 由首页 onGenerate → commitResult 计算后，经 eventChannel 传入完整档案结果并渲染。
 // 纯展示 + 保存档案卡片（canvas 导出），不含任何预测/判定内容。
+// 另含「历法文化解读」AI 层：AI 只解释已算好的事实，失败自动降级本地规则文本，不阻断主链路。
+import { resolveInsight } from '../../lib/insight.js';
+
+// 云函数 timeout 为 3s，而大模型调用通常需 5–15s。
+// 客户端等待须明显长于云函数超时，否则必然超时降级。
+const INSIGHT_TIMEOUT_MS = 30000;
+
 Page({
   data: {
     r: null,       // 档案结果对象
     loaded: false, // 是否已接收到首页推来的数据
+    insightLoading: false,
+    insightSections: [],
+    insightLimitations: [],
+    insightModel: '',
   },
 
   onLoad() {
-    // 接收首页 commitResult 计算好的档案；正常由首页 navigateTo 携带 eventChannel 进入。
+    // 接收首页 commitResult 计算好的档案；正常由首页 navigateTo携带 eventChannel 进入。
     const channel = this.getOpenerEventChannel();
     if (channel && channel.on) {
       channel.on('archive', (payload) => {
         if (payload && payload.result) {
           this.setData({ r: payload.result, loaded: true });
           wx.setNavigationBarTitle({ title: '历法档案' });
+          this.loadInsight(payload.result);
         }
       });
+    }
+  },
+
+  // 生成文化解读：云端 AI 优先，失败/超时/未开云 → 本地规则降级
+  async loadInsight(archiveResult) {
+    this.setData({ insightLoading: true, insightSections: [], insightLimitations: [], insightModel: '' });
+
+    const app = getApp();
+    const cloudReady = !!(app && app.globalData && app.globalData.cloudEnvId && wx.cloud);
+    console.info('[insight] cloudReady =', cloudReady,
+      '| env =', (app && app.globalData && app.globalData.cloudEnvId) || '(空)');
+
+    const timeout = new Promise((resolve) => {
+      setTimeout(() => resolve(null), INSIGHT_TIMEOUT_MS);
+    });
+
+    const work = resolveInsight(archiveResult, { cloudAvailable: cloudReady });
+    const settled = await Promise.race([work, timeout]);
+
+    const payload = settled || {
+      insight: null,
+      facts: null,
+      usedAI: false,
+      reason: 'timeout',
+    };
+
+    // 打印降级原因，便于真机排查（Console 可见）
+    if (!payload.usedAI) {
+      console.warn('[insight] 走本地规则降级，原因：', payload.reason);
+    } else {
+      console.info('[insight] 云端 AI 成功');
+    }
+
+    if (payload && payload.insight) {
+      const ins = payload.insight;
+      this.setData({
+        insightLoading: false,
+        insightSections: ins.sections || [],
+        insightLimitations: ins.limitations || [],
+        insightModel: payload.usedAI ? 'AI 生成' : '本地规则',
+      });
+    } else {
+      this.setData({ insightLoading: false, insightModel: '暂不可用' });
     }
   },
 

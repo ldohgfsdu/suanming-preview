@@ -68,6 +68,7 @@ if (!thisNode.replace(/^v/, '').startsWith(requiredMajor + '.')) {
 // ── 逐环节执行 ─────────────────────────────────────────────────────
 const steps = [
   ['版本守卫', [join(repoRoot, 'scripts', 'check-node-version.mjs'), 'verify-node']],
+  ['隐私字段自检', [join(repoRoot, 'scripts', 'check-appjson-privacy.mjs')]],
   ['typecheck', [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.json']],
   ['lint', [join(repoRoot, 'node_modules', 'eslint', 'bin', 'eslint.js'), '.']],
   ['测试构建', [join(repoRoot, 'scripts', '_clean-dist.mjs')]],
@@ -104,4 +105,4 @@ console.log(`[gate] npm     = ${npmCli}`);
 for (const [label, args] of steps) run(label, args);
 for (const [label, args] of testRuns) run(label, args);
 
-console.log('\n[gate] ✓ 全部门禁通过（版本守卫 → typecheck → lint → 测试构建 → TS 单测 → mjs 单测）');
+console.log('\n[gate] ✓ 全部门禁通过（版本守卫 → 隐私字段自检 → typecheck → lint → 测试构建 → TS 单测 → mjs 单测）');

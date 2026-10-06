@@ -1,0 +1,10 @@
+{
+  "name": "insight",
+  "version": "1.0.0",
+  "description": "Suanming Preview · 历法文化解读（AI 只做解释，不做判定）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "^2.6.3",
+    "@cloudbase/node-sdk": "^3.16.0"
+  }
+}

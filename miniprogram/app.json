@@ -17,5 +17,10 @@
   "themeLocation": "theme.json",
   "style": "v2",
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {
+    "scope.writePhotosAlbum": {
+      "desc": "用于将你生成的时间档案卡片保存到相册，便于留存或分享"
+    }
+  }
 }

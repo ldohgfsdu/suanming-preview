@@ -75,6 +75,74 @@ export function hourPillar(dayStemIdx, hour) {
   return { gan: GANS[stem], zhi: ZHIS[zhi], ganzhi: GANS[stem] + ZHIS[zhi] };
 }
 
+/**
+ * 子时换日口径（移植自 Core `BirthInput.DayBoundaryRule`）。
+ *
+ * - `CHANGE_AT_ZI`：23:00 进入早子时即换日柱（传统主流）
+ * - `CHANGE_AT_MIDNIGHT`：00:00 才换日，23:00–23:59 仍用当日日柱（晚子时）
+ */
+export const DayBoundaryRule = {
+  CHANGE_AT_ZI: 'CHANGE_AT_ZI',
+  CHANGE_AT_MIDNIGHT: 'CHANGE_AT_MIDNIGHT',
+};
+
+/** 默认口径：早子时换日（与既有行为一致，保证向后兼容）。 */
+export const DEFAULT_DAY_BOUNDARY_RULE = DayBoundaryRule.CHANGE_AT_ZI;
+
+/**
+ * 依子时换日口径，推断「排盘用公历日」与「取时支用的小时」。
+ *
+ * 移植自 Core `BaZiCalculator.applyDayBoundary`：
+ *  - hourUnknown 时**不捏造正午**，仅按日历日取日柱，时支为 null
+ *  - CHANGE_AT_ZI 且 hour>=23 → 日柱取次日，时支仍为该 hour（子）
+ *  - CHANGE_AT_MIDNIGHT → 一律不换日
+ *
+ * @param {number} y @param {number} m @param {number} d
+ * @param {number} hour 0–23，或 -1 表示时辰不详
+ * @param {string} rule DayBoundaryRule 之一
+ * @returns {{ y:number, m:number, d:number, hourForZhi:number|null, dayShifted:boolean }}
+ */
+export function applyDayBoundary(y, m, d, hour, rule = DEFAULT_DAY_BOUNDARY_RULE) {
+  if (!(hour >= 0)) {
+    // 时辰不详：绝不捏造单一答案，时支留空
+    return { y, m, d, hourForZhi: null, dayShifted: false };
+  }
+  if (rule === DayBoundaryRule.CHANGE_AT_ZI && hour >= 23) {
+    const n = nextDay(y, m, d);
+    return { y: n.y, m: n.m, d: n.d, hourForZhi: hour, dayShifted: true };
+  }
+  return { y, m, d, hourForZhi: hour, dayShifted: false };
+}
+
+/** 公历加一天（走儒略日数，避免手写月长表）。 */
+function nextDay(y, m, d) {
+  const jd = gregorianToJde(y, m, d) + 1;
+  const g = jdeToGregorian(jd);
+  return { y: g.y, m: g.m, d: g.d };
+}
+
+/**
+ * 五鼠遁起时干所用的日干。
+ *
+ * 时辰干支连续（癸亥之后为甲子），故**23:00–23:59 的子时干总按次日日干起**：
+ *  - CHANGE_AT_ZI：日柱已是次日，直接用日柱日干
+ *  - CHANGE_AT_MIDNIGHT：日柱仍为当日，时干须按**次日**日干起遁
+ *    （Core 自 0.22.20 起更正，此前误用当日日干）
+ *
+ * @param {{y:number,m:number,d:number}} pillarDate 排盘用公历日
+ * @param {number} hour 0–23
+ * @param {string} rule DayBoundaryRule 之一
+ * @param {{index:number}} dayPillarObj 当日日柱（须传整柱对象以取 index）
+ * @returns {number} 用于五鼠遁的日干序号 0–9
+ */
+export function hourStemDayStem(pillarDate, hour, rule, dayPillarObj) {
+  if (rule === DayBoundaryRule.CHANGE_AT_MIDNIGHT && hour >= 23) {
+    const n = nextDay(pillarDate.y, pillarDate.m, pillarDate.d);
+    return dayPillar(gregorianToJde(n.y, n.m, n.d)).index % 10;
+  }
+  return dayPillarObj.index % 10;
+}
+
 /** 四柱五行字数（天干 + 地支|气）；zhiArr 可选，缺省仅计天干。 */
 export function tally(ganArr, zhiArr = []) {
   const c = { wood: 0, fire: 0, earth: 0, metal: 0, water: 0 };
@@ -172,7 +240,8 @@ export function trueSolarToLocal(y, m, d, hour, lonDeg) {
 }
 
 /** hour：0..23，或 -1 = 未知（则无时柱）。lonDeg：本地经度（东经正，如北京 116.4）；null=未提供。 */
-export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
+export function computeArchive(y, m, d, hour = -1, lonDeg = null,
+  dayBoundaryRule = DEFAULT_DAY_BOUNDARY_RULE) {
   const jd = gregorianToJde(y, m, d);
   // 真太阳时修正：仅当提供了经度且时辰已知时，才进入“单一时间事实源”chain。
   const rawCanon = (Number.isFinite(lonDeg) && hour >= 0 && hour <= 23)
@@ -186,18 +255,45 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null) {
   if (canon) {
     // —— 单一时间事实源：先确定 真太阳时->本地历日+太阳时，再统一算各时间敏感柱 ——
     y2 = canon.canonDate.y; m2 = canon.canonDate.m; d2 = canon.canonDate.d;
+    // 日柱：先按子时换日口径修正历日（早子时口径下 23:00 后已属次日）
+    const bnd = applyDayBoundary(y2, m2, d2, hour, dayBoundaryRule);
+    y2 = bnd.y; m2 = bnd.m; d2 = bnd.d;
     dp = dayPillar(gregorianToJde(y2, m2, d2));
-    // 年/月柱由出生“绝对瞬间”的太阳黄经判定（立春/节边界，经既有规则重算）
-    const absJde = jd + ((hour - 12) / 24);
+    // 年/月柱由出生"绝对瞬间"的太阳黄经判定（立春/节边界）
+    // 【双时间轴纪律，移植自 Core BaZiCalculator.resolveExactTime / CalculationProfile】
+    //   · 年柱/月柱的节气界 → 出生**绝对瞬间**（civil 墙钟时刻，不做真太阳时修正）
+    //   · 日界/时柱        → **地方太阳钟**（真太阳时修正后的时刻）
+    // 理由：真太阳时修正只用于「日界/时柱」的太阳钟口径，
+    //       绝不可用来挪动出生瞬间本身，否则会错误地跨过立春或「节」的交接时刻。
+    // 注意：这里必须用 jd（已含日界修正的历日 00:00 基准）+ 墙钟小时，
+    //       不得引入真太阳时修正量，也不得用 canon.canonHour。
+    const absJde = gregorianToJde(y2, m2, d2) + (hour >= 0 ? hour / 24 : 12 / 24);
     yp = yearPillar(absJde);
     mp = monthPillar(absJde, yp.ganzhiYear);
-    // 时柱由修正后的太阳时判定
-    hp = hourPillar(dp.index % 10, 2 * zhiOfHour(canon.canonHour));
+    // 时柱由修正后的太阳时判定；时干所用日干依子时换日口径取
+    if (bnd.hourForZhi != null) {
+      const stemBase = hourStemDayStem(
+        { y: y2, m: m2, d: d2 }, bnd.hourForZhi, dayBoundaryRule, dp,
+      );
+      hp = hourPillar(stemBase, 2 * zhiOfHour(canon.canonHour));
+    } else {
+      hp = null;
+    }
   } else {
-    y2 = y; m2 = m; d2 = d;
-    yp = yearPillar(jd); dp = dayPillar(jd);
-    mp = monthPillar(jd, yp.ganzhiYear);
-    hp = (hour >= 0 && hour <= 23) ? hourPillar(dp.index % 10, hour) : null;
+    // 无真太阳时修正路径（未提供地点或超界）
+    const bnd = applyDayBoundary(y, m, d, hour, dayBoundaryRule);
+    y2 = bnd.y; m2 = bnd.m; d2 = bnd.d;
+    yp = yearPillar(gregorianToJde(y2, m2, d2));
+    dp = dayPillar(gregorianToJde(y2, m2, d2));
+    mp = monthPillar(gregorianToJde(y2, m2, d2), yp.ganzhiYear);
+    if (bnd.hourForZhi != null) {
+      const stemBase = hourStemDayStem(
+        { y: y2, m: m2, d: d2 }, bnd.hourForZhi, dayBoundaryRule, dp,
+      );
+      hp = hourPillar(stemBase, bnd.hourForZhi);
+    } else {
+      hp = null;
+    }
   }
 
   // 节气 bracket（前后各一）——由 engine 的单一事实源 solarTermResultAt 提供

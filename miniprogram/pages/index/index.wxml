@@ -73,12 +73,35 @@
       <view class="lunar-preview" wx:if="{{lunarPreview}}">⇄ 对应公历 {{lunarPreview}}</view>
     </block>
 
-    <!-- 时辰 -->
-    <view class="row">
+    <!-- 出生时刻：时辰（传统）/ 精确到分（专业）双模式 -->
+    <view class="row row-noborder time-row">
       <view class="label">出生时刻</view>
+
+      <!-- 模式切换 -->
+      <view class="time-mode">
+        <view class="time-mode-item {{timeMode === 'shichen' ? 'is-on' : ''}}" data-mode="shichen" bindtap="onTimeModeTap">时辰</view>
+        <view class="time-mode-item {{timeMode === 'precise' ? 'is-on' : ''}}" data-mode="precise" bindtap="onTimeModeTap">精确到分</view>
+      </view>
+    </view>
+
+    <!-- 时辰模式 -->
+    <view class="row" wx:if="{{timeMode === 'shichen'}}">
+      <view class="label label-sub">选择时辰</view>
       <picker class="picker" mode="selector" range="{{hourOptions}}" value="{{hourIdx}}" bindchange="onHourChange">
         <view class="picker-value">{{hourLabel}}</view>
       </picker>
+    </view>
+
+    <!-- 精确模式：原生时间选择器（时 + 分） -->
+    <view class="row" wx:if="{{timeMode === 'precise'}}">
+      <view class="label label-sub">选择时刻</view>
+      <picker class="picker picker-time" mode="time" value="{{preciseTime}}" bindchange="onPreciseTimeChange">
+        <view class="picker-value">{{preciseTime}}</view>
+      </picker>
+    </view>
+
+    <view class="time-hint" wx:if="{{timeMode === 'precise'}}">
+      精确到分钟后，真太阳时校正与时辰判定均按实际时刻计算（历法依据：真太阳时）。
     </view>
 
     <!-- 性别（存档用，不计入历法数据） -->

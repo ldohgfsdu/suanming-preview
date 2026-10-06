@@ -35,15 +35,26 @@ test('立春前 2/3 → 癸卯；立春后 2/4 → 甲辰（2024）', () => {
   assert.strictEqual(computeArchive(2024, 2, 4, 12, null).four.year.ganz, '甲辰');
 });
 
-// ---------- 子时换日规则（日柱当日不变，时柱随 23/0 均为子时，1 点进丑时） ----------
-test('子时 23:00 时柱=庚子，日柱=壬戌（2023-05-04，1949-10-01=甲子锚定）', () => {
+// ---------- 子时换日规则（已移植 Core 的 DayBoundaryRule，默认早子时换日） ----------
+// 2026-10-06 更新：子时换日规则实现后，23:00 起日柱进入**次日**。
+// 旧期望「日柱当日不变」对应的是规则未实现时的历史行为，现已更正。
+// 独立验算：2023-05-04 日柱=壬戌；23:00 属早子时 → 05-05 日柱=癸亥；
+//           时柱按五鼠遁 癸(9)×2%10=8 → 壬子。
+test('子时 23:00 换日：日柱=癸亥（次日），时柱=壬子（癸日五鼠遁）', () => {
   const a = computeArchive(2023, 5, 4, 23, null);
-  assert.strictEqual(a.four.day.ganz, '壬戌');
-  assert.strictEqual(a.four.hour.ganz, '庚子');
+  assert.strictEqual(a.four.day.ganz, '癸亥', '23:00 早子时应换入次日');
+  assert.strictEqual(a.four.hour.ganz, '壬子', '时干按次日日干癸起遁');
 });
-test('00:30 时柱仍庚子（子时）,日柱不变', () => {
+test('23:59 同属早子时，与 23:00 一致', () => {
+  const a = computeArchive(2023, 5, 4, 23, null);
+  const b = computeArchive(2023, 5, 4, 23.9, null);
+  assert.strictEqual(a.four.day.ganz, b.four.day.ganz);
+  assert.strictEqual(a.four.hour.ganz, b.four.hour.ganz);
+});
+test('00:30 时柱庚子（当日壬戌日五鼠遁），日柱仍为当日', () => {
   const a = computeArchive(2023, 5, 4, 0, null);
-  assert.strictEqual(a.four.day.ganz, '壬戌');
+  assert.strictEqual(a.four.day.ganz, '壬戌', '00:30 尚未换日');
+  // 壬(8)×2%10=6 → 庚子；此时日柱即当日，不涉「次日日干」修正
   assert.strictEqual(a.four.hour.ganz, '庚子');
 });
 

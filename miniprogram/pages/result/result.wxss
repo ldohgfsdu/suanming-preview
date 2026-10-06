@@ -102,3 +102,58 @@
 }
 
 .share-canvas { position: fixed; left: -9999px; top: 0; pointer-events: none; }
+/* ---------------- 历法文化解读（AI 层） ---------------- */
+.insight-loading { padding: 26rpx 0; }
+.loading-dot { display: block; color: var(--ink); font-size: 26rpx; }
+.loading-sub { display: block; margin-top: 10rpx; color: var(--muted); font-size: 21rpx; line-height: 1.6; }
+
+.insight-item {
+  margin-top: 20rpx;
+  padding: 24rpx;
+  background: var(--card);
+  border: 1rpx solid var(--line);
+  border-radius: 16rpx;
+}
+.insight-item-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 12rpx;
+}
+.insight-badge {
+  flex-shrink: 0;
+  margin-left: 14rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  font-size: 19rpx;
+  font-weight: 400;
+}
+.insight-badge.is-fact { background: rgba(18, 161, 115, 0.14); color: #12a173; }
+.insight-badge.is-culture { background: rgba(154, 107, 79, 0.14); color: var(--accent); }
+.insight-item-content {
+  color: var(--ink);
+  font-size: 25rpx;
+  line-height: 1.78;
+}
+
+.insight-limitation {
+  margin-top: 20rpx;
+  padding: 20rpx 24rpx;
+  border-left: 4rpx solid var(--line);
+  background: transparent;
+}
+.insight-limitation-title {
+  display: block;
+  color: var(--muted);
+  font-size: 21rpx;
+  margin-bottom: 8rpx;
+}
+.insight-limitation-item {
+  display: block;
+  color: var(--muted);
+  font-size: 21rpx;
+  line-height: 1.7;
+}

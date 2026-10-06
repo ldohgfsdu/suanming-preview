@@ -1,8 +1,8 @@
 {
-  "description": "Suanming Preview - Eastem Time Culture Archive (run in WeChat DevTools, tourist appid; replace with your own AppID when available)",
+  "description": "Suanming Preview - 东方时间文化档案（东方时间档案）· 基于真实天文历法算法",
   "compileType": "miniprogram",
   "libVersion": "3.6.2",
-  "appid": "wx2dfa85a31cf906d1",
+  "appid": "wxd58dc3b769e05f93",
   "projectname": "suanming-preview",
   "setting": {
     "es6": true,
@@ -35,6 +35,7 @@
     "tabSize": 2
   },
   "simulatorPluginLibVersion": {},
+  "cloudfunctionRoot": "cloudfunctions/",
   "packOptions": {
     "ignore": [],
     "include": []

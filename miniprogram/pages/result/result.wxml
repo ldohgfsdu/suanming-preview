@@ -61,6 +61,36 @@
   </view>
   <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{r.trueSolar}}</text></view>
 
+  <view class="divider"></view>
+
+  <!-- AI 文化解读：AI 只解释已算好的事实，不做任何判定 -->
+  <view class="section-title">
+    历法文化解读
+    <text class="section-inline">{{insightModel}}</text>
+  </view>
+  <view class="insight-loading" wx:if="{{insightLoading}}">
+    <text class="loading-dot">正在生成文化解读…</text>
+    <text class="loading-sub">解读基于上方已算好的历法事实，不改变任何排盘结果</text>
+  </view>
+  <view class="insight-body" wx:elif="{{insightSections && insightSections.length}}">
+    <view class="insight-item" wx:for="{{insightSections}}" wx:key="id">
+      <view class="insight-item-title">
+        <text>{{item.title}}</text>
+        <text class="insight-badge {{item.contentType === 'FACT' ? 'is-fact' : 'is-culture'}}">{{item.contentType === 'FACT' ? '事实' : '文化背景'}}</text>
+      </view>
+      <view class="insight-item-content">{{item.content}}</view>
+    </view>
+    <view class="insight-limitation" wx:if="{{insightLimitations && insightLimitations.length}}">
+      <text class="insight-limitation-title">说明</text>
+      <text wx:for="{{insightLimitations}}" wx:key="*this" class="insight-limitation-item">· {{item}}</text>
+    </view>
+  </view>
+  <view class="insight-body" wx:else>
+    <view class="insight-item">
+      <view class="insight-item-content">解读生成暂不可用。上方历法档案由本地确定性引擎计算，不受此影响，可正常查看与使用。</view>
+    </view>
+  </view>
+
   <view class="note">本档案由真实天文历法计算得出：结果均源自真太阳时、天文节气等历法数据，仅供传统文化研究与娱乐参考，不含任何预测与判定。</view>
 
   <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>

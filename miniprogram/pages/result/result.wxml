@@ -68,7 +68,13 @@
     历法文化解读
     <text class="section-inline">{{insightModel}}</text>
   </view>
-  <view class="insight-loading" wx:if="{{insightLoading}}">
+  <!-- 未生成：须用户点击才生成（铁律：AI 显式触发） -->
+  <view class="insight-idle" wx:if="{{insightState === 'idle'}}">
+    <button class="btn-insight" bindtap="onGenerateInsight">生成历法文化解读</button>
+    <view class="insight-hint">解读仅说明上方已算好的历法事实的文化背景</view>
+  </view>
+
+  <view class="insight-loading" wx:elif="{{insightState === 'loading'}}">
     <text class="loading-dot">正在生成文化解读…</text>
     <text class="loading-sub">解读基于上方已算好的历法事实，仅作文化背景补充</text>
   </view>

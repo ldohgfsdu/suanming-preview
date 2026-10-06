@@ -64,8 +64,15 @@ export function buildFacts(r) {
   };
 }
 
-/** 稳定的本地 docHash（不依赖 crypto，够用于缓存键与降级去重）。 */
-export function localDocHash(facts) {
+/**
+ * 客户端缓存键（**不是** HASH_CONTRACT_V1 的 docHash，勿混用、勿当 docHash 上传）。
+ *
+ * - 冻结契约 docHash：位于 `shared/hash/`，RFC 8785 规范化 + SHA-256 + NFC + 白名单，
+ *   用途是「档案指纹 / 跨端对拍」，唯一真值为 `resolvedEpochMilli(INT,UTC)` + `timezoneId(IANA)`。
+ * - 本函数：仅需「同一份事实 → 同一个键」的稳定性，用于本地缓存与重复请求去重，
+ *   故用轻量 FNV 变体即可，不依赖 crypto（小程序端无稳定 SHA-256 API）。
+ */
+export function insightCacheKey(facts) {
   const s = JSON.stringify(facts || {});
   let h1 = 0x811c9dc5;
   let h2 = 0x01000193;
@@ -193,27 +200,39 @@ export function validateInsight(insight, facts) {
 export function resolveInsight(archiveResult, opts) {
   const facts = buildFacts(archiveResult);
   const local = ruleBasedInsight(facts);
-  const fallback = { insight: local, facts, usedAI: false, reason: 'local_default' };
+  const cacheKey = insightCacheKey(facts);
+  const fallback = { insight: local, facts, usedAI: false, reason: 'local_default', cacheKey };
   if (!opts || !opts.cloudAvailable) return fallback;
 
-  const docHash = localDocHash(facts);
-  return callCloudInsight(facts, docHash)
+  return callCloudInsight(facts, cacheKey)
     .then((res) => {
       const errors = validateInsight(res, facts);
       if (errors.length) {
-        return { insight: local, facts, usedAI: false, reason: 'guard:' + errors.join('|') };
+        return { insight: local, facts, usedAI: false, reason: 'guard:' + errors.join('|'), cacheKey };
       }
-      return { insight: Object.assign({}, res, { fallback: false }), facts, usedAI: true, reason: 'ok' };
+      return {
+        insight: Object.assign({}, res, { fallback: false }),
+        facts, usedAI: true, reason: 'ok', cacheKey,
+      };
     })
     .catch((e) => ({
       insight: local,
       facts,
       usedAI: false,
       reason: 'error:' + ((e && e.errMsg) || 'unknown'),
+      cacheKey,
     }));
 }
 
-function callCloudInsight(facts, docHash) {
+/**
+ * 调用云函数 insight。
+ *
+ * 注意：上行字段名为 `docHash` 是**沿用已部署云函数的入参名**（改名需同步重新部署，
+ * 否则会命中 missing_doc_fields 而全面降级）。其实际值是**客户端缓存键** cacheKey，
+ * 仅用于云端日志排查与回显；**冻结契约的 docHash（SHA-256 + RFC 8785）不在客户端生成**，
+ * 服务端不应把它当作档案指纹使用。
+ */
+function callCloudInsight(facts, cacheKey) {
   return new Promise((resolve, reject) => {
     if (typeof wx === 'undefined' || !wx.cloud) {
       reject(new Error('cloud_unavailable'));
@@ -223,7 +242,7 @@ function callCloudInsight(facts, docHash) {
       name: 'insight',
       data: {
         action: 'interpret',
-        docHash,
+        docHash: cacheKey,
         schemaVersion: 'archive-document-v1',
         promptVer: PROMPT_VER,
         facts,

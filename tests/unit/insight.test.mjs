@@ -139,6 +139,33 @@ test('I8 buildFacts：跨日字段读取 crossDay（结果页真实字段名）'
   assert.doesNotMatch(insight, /r\.trueSolarDayChanged/);
 });
 
+test('I10 AI 显式触发：onLoad 不得自动调用解读，须有用户点按入口', () => {
+  const js = readFileSync(resolve(__dirname, '../../miniprogram/pages/result/result.js'), 'utf8');
+  const wxml = readFileSync(resolve(__dirname, '../../miniprogram/pages/result/result.wxml'), 'utf8');
+  // 1) 必须提供显式点按入口，且页面有按钮绑定
+  assert.match(js, /onGenerateInsight\(/, '须提供显式点按入口');
+  assert.match(wxml, /bindtap="onGenerateInsight"/, '页面须有按钮绑定该入口');
+  // 2) onLoad 内不得自动触发（PRD §7.4/§9 铁律）
+  const i = js.indexOf('onLoad()');
+  assert.ok(i >= 0, '应存在 onLoad');
+  assert.doesNotMatch(js.slice(i, i + 600), /this\.loadInsight\(/, 'onLoad 内不得自动调用 loadInsight');
+  // 3) 三态机须覆盖 idle / loading / done
+  assert.match(js, /insightState: 'idle'/);
+  assert.match(wxml, /insightState === 'idle'/);
+});
+
+test('I11 缓存键语义：轻量缓存键不得冒充冻结契约 docHash', () => {
+  const lib = readFileSync(resolve(__dirname, '../../miniprogram/lib/insight.js'), 'utf8');
+  const page = readFileSync(resolve(__dirname, '../../miniprogram/pages/result/result.js'), 'utf8');
+  // 旧名 localDocHash 易被误认为契约 docHash，必须已重命名
+  assert.doesNotMatch(lib, /localDocHash/, '须重命名为 insightCacheKey');
+  assert.match(lib, /export function insightCacheKey/);
+  // 注释须澄清与 HASH_CONTRACT_V1 的区别（防后人误当 docHash 上传）
+  assert.match(lib, /HASH_CONTRACT_V1/, '须注明与冻结契约 docHash 的区别');
+  // 仅缓存云端 AI 产出（本地规则零成本，不占缓存）
+  assert.match(page, /payload\.usedAI && cacheKey/, '仅 AI 产出入缓存');
+});
+
 test('I9 buildFacts：五行只输出字面计数，不带旺衰/强弱语义字段', () => {
   const insight = readFileSync(resolve(__dirname, '../../miniprogram/lib/insight.js'), 'utf8');
   const m = insight.match(/wuxing:[\s\S]{0,200}?\}\)\)/);

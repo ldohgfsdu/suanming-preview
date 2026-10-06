@@ -2,16 +2,52 @@
 // 由首页 onGenerate → commitResult 计算后，经 eventChannel 传入完整档案结果并渲染。
 // 纯展示 + 保存档案卡片（canvas 导出），仅客观历法数据与文化背景。
 // 另含「历法文化解读」AI 层：AI 只解释已算好的事实，失败自动降级本地规则文本，不阻断主链路。
-import { resolveInsight } from '../../lib/insight.js';
+import { resolveInsight, buildFacts, insightCacheKey } from '../../lib/insight.js';
 
-// 云函数 timeout 为 3s，而大模型调用通常需 5–15s。
-// 客户端等待须明显长于云函数超时，否则必然超时降级。
-const INSIGHT_TIMEOUT_MS = 30000;
+// 云函数 timeout（config.json / 控制台）为 60s，大模型调用通常需 5–15s。
+// 客户端等待须略长于云函数超时，否则云函数还在跑、客户端已降级。
+const INSIGHT_TIMEOUT_MS = 65000;
+
+// AI 结果本地缓存：同一份档案重复查看时复用，避免重复调用与重复计费。
+// 仅缓存云端 AI 产出（本地规则文本即时生成、零成本，无需缓存）。
+const CACHE_PREFIX = 'insight_v1_';
+const CACHE_INDEX_KEY = 'insight_v1_index';
+const CACHE_MAX = 20;
+
+function cacheRead(key) {
+  try {
+    const raw = wx.getStorageSync(CACHE_PREFIX + key);
+    if (!raw || !raw.insight) return null;
+    // 结构校验：缓存也须过一遍基本形态，避免旧版本脏数据
+    const ins = raw.insight;
+    if (!ins.sections || !ins.sections.length || !ins.limitations) return null;
+    return ins;
+  } catch (e) {
+    return null;
+  }
+}
+
+function cacheWrite(key, insight) {
+  try {
+    const idx = wx.getStorageSync(CACHE_INDEX_KEY) || [];
+    const full = CACHE_PREFIX + key;
+    if (idx.indexOf(full) < 0) idx.push(full);
+    while (idx.length > CACHE_MAX) {
+      const oldest = idx.shift();
+      wx.removeStorageSync(oldest);
+    }
+    wx.setStorageSync(CACHE_INDEX_KEY, idx);
+    wx.setStorageSync(full, { insight, ts: Date.now() });
+  } catch (e) {
+    // 缓存写入失败不影响主链路
+  }
+}
 
 Page({
   data: {
     r: null,       // 档案结果对象
     loaded: false, // 是否已接收到首页推来的数据
+    insightState: 'idle', // idle | loading | done
     insightLoading: false,
     insightSections: [],
     insightLimitations: [],
@@ -20,21 +56,47 @@ Page({
 
   onLoad() {
     // 接收首页 commitResult 计算好的档案；正常由首页 navigateTo携带 eventChannel 进入。
+    // 铁律：AI 解读须**用户显式点击**才生成（PRD §7.4/§9），此处只渲染档案，不自动调用。
     const channel = this.getOpenerEventChannel();
     if (channel && channel.on) {
       channel.on('archive', (payload) => {
         if (payload && payload.result) {
           this.setData({ r: payload.result, loaded: true });
           wx.setNavigationBarTitle({ title: '历法档案' });
-          this.loadInsight(payload.result);
         }
       });
     }
   },
 
+  // 用户点击「生成解读」→ 先查缓存，未命中才走云端
+  async onGenerateInsight() {
+    const r = this.data.r;
+    if (!r || this.data.insightLoading || this.data.insightState === 'loading') return;
+
+    const key = insightCacheKey(buildFacts(r));
+    const cached = cacheRead(key);
+    if (cached) {
+      this.setData({
+        insightState: 'done',
+        insightLoading: false,
+        insightSections: cached.sections || [],
+        insightLimitations: cached.limitations || [],
+        insightModel: 'AI 生成 · 本地缓存',
+      });
+      return;
+    }
+    await this.loadInsight(r, key);
+  },
+
   // 生成文化解读：云端 AI 优先，失败/超时/未开云 → 本地规则降级
-  async loadInsight(archiveResult) {
-    this.setData({ insightLoading: true, insightSections: [], insightLimitations: [], insightModel: '' });
+  async loadInsight(archiveResult, cacheKey) {
+    this.setData({
+      insightState: 'loading',
+      insightLoading: true,
+      insightSections: [],
+      insightLimitations: [],
+      insightModel: '',
+    });
 
     const app = getApp();
     const cloudReady = !!(app && app.globalData && app.globalData.cloudEnvId && wx.cloud);
@@ -64,14 +126,17 @@ Page({
 
     if (payload && payload.insight) {
       const ins = payload.insight;
+      // 仅缓存云端 AI 产出（本地规则文本零成本即时生成，无需占用缓存）
+      if (payload.usedAI && cacheKey) cacheWrite(cacheKey, ins);
       this.setData({
+        insightState: 'done',
         insightLoading: false,
         insightSections: ins.sections || [],
         insightLimitations: ins.limitations || [],
         insightModel: payload.usedAI ? 'AI 生成' : '本地规则',
       });
     } else {
-      this.setData({ insightLoading: false, insightModel: '暂不可用' });
+      this.setData({ insightState: 'done', insightLoading: false, insightModel: '暂不可用' });
     }
   },
 

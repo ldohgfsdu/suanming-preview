@@ -1,53 +1,39 @@
 // pages/result/result.js — 独立「历法档案」结果页。
-// 由首页 onGenerate → commitResult 计算后，经 eventChannel 传入完整档案结果并渲染。
-// 纯展示 + 保存档案卡片（canvas 导出），仅客观历法数据与文化背景。
-// 另含「历法文化解读」AI 层：AI 只解释已算好的事实，失败自动降级本地规则文本，不阻断主链路。
-import { resolveInsight, buildFacts, insightCacheKey } from '../../lib/insight.js';
+// 纯展示 + 保存档案卡片；AI 只解释已算好的事实，失败自动降级本地规则文本。
+import { resolveInsight, buildFacts, insightCacheKey, OUTPUT_VERSION, PROMPT_VER } from '../../lib/insight.js';
 
-// PRD 冻结性能红线「AI 8s 降级」（PRD:170/289）：超过 8s 一律降级本地规则文本，
-// 不让用户对着转圈干等。云函数 config.json 的 timeout=60s 只是服务端上限，与前端
-// 等待时长无关；超过 8s 后本轮不再采纳云端结果，但晚到的成功结果会补写缓存（见下）。
+// 用户最多等 8 秒；云函数服务端上限更长，仅用于让已开始的模型调用有机会完成并进入服务端缓存。
 const INSIGHT_TIMEOUT_MS = 8000;
 
-// AI 结果本地缓存：同一份档案重复查看时复用，避免重复调用与重复计费。
-// 仅缓存云端 AI 产出（本地规则文本即时生成、零成本，无需缓存）。
-const CACHE_PREFIX = 'insight_v1_';
-const CACHE_INDEX_KEY = 'insight_v1_index';
-const CACHE_MAX = 20;
+// 客户端只保留“本次小程序会话”的 AI 结果，避免模型切换后跨会话误用旧内容。
+// 跨会话复用由云函数服务端 cacheKey(docHash+promptVer+model+outputVersion) 负责。
+const SESSION_CACHE = new Map();
+const SESSION_CACHE_MAX = 20;
 
 function cacheRead(key) {
-  try {
-    const raw = wx.getStorageSync(CACHE_PREFIX + key);
-    if (!raw || !raw.insight) return null;
-    // 结构校验：缓存也须过一遍基本形态，避免旧版本脏数据
-    const ins = raw.insight;
-    if (!ins.sections || !ins.sections.length || !ins.limitations) return null;
-    return ins;
-  } catch (e) {
+  const ins = SESSION_CACHE.get(key);
+  if (!ins) return null;
+  if (ins.outputVersion !== OUTPUT_VERSION || ins.promptVer !== PROMPT_VER
+    || !/^[0-9a-f]{64}$/.test(String(ins.docHash || '')) || !ins.model
+    || !ins.sections || !ins.sections.length || !ins.limitations) {
+    SESSION_CACHE.delete(key);
     return null;
   }
+  SESSION_CACHE.delete(key);
+  SESSION_CACHE.set(key, ins);
+  return ins;
 }
 
 function cacheWrite(key, insight) {
-  try {
-    const idx = wx.getStorageSync(CACHE_INDEX_KEY) || [];
-    const full = CACHE_PREFIX + key;
-    if (idx.indexOf(full) < 0) idx.push(full);
-    while (idx.length > CACHE_MAX) {
-      const oldest = idx.shift();
-      wx.removeStorageSync(oldest);
-    }
-    wx.setStorageSync(CACHE_INDEX_KEY, idx);
-    wx.setStorageSync(full, { insight, ts: Date.now() });
-  } catch (e) {
-    // 缓存写入失败不影响主链路
+  if (!key || !insight) return;
+  SESSION_CACHE.delete(key);
+  SESSION_CACHE.set(key, insight);
+  while (SESSION_CACHE.size > SESSION_CACHE_MAX) {
+    const oldest = SESSION_CACHE.keys().next().value;
+    SESSION_CACHE.delete(oldest);
   }
 }
 
-// ---- 分享卡片：文本估宽与截断 ----
-// canvas 不自动换行也不裁剪，长串（「请选择出生地点（跳过真太阳时修正）」、
-// 「地名 · 东经 xx.x° · 北纬 xx.x°」）会直接画出画布右边界，必须按估宽截断。
-// 估宽口径：CJK/全角按字号宽度，ASCII 按 0.55 字号（中西文混排近似即可）。
 const CARD_VALUE_X = 200;
 function estWidth(str, fontSize) {
   let w = 0;
@@ -69,9 +55,9 @@ function clipText(str, maxW, fontSize) {
 
 Page({
   data: {
-    r: null,       // 档案结果对象
-    loaded: false, // 是否已接收到首页推来的数据
-    insightState: 'idle', // idle | loading | done
+    r: null,
+    loaded: false,
+    insightState: 'idle',
     insightLoading: false,
     insightSections: [],
     insightLimitations: [],
@@ -79,8 +65,6 @@ Page({
   },
 
   onLoad() {
-    // 接收首页 commitResult 计算好的档案；正常由首页 navigateTo携带 eventChannel 进入。
-    // 铁律：AI 解读须**用户显式点击**才生成（PRD §7.4/§9），此处只渲染档案，不自动调用。
     const channel = this.getOpenerEventChannel();
     if (channel && channel.on) {
       channel.on('archive', (payload) => {
@@ -92,12 +76,10 @@ Page({
     }
   },
 
-  // 页面销毁时清掉降级定时器，避免把页面闭包钉在内存里
   onUnload() {
     if (this._insightTimer) { clearTimeout(this._insightTimer); this._insightTimer = 0; }
   },
 
-  // 用户点击「生成解读」→ 先查缓存，未命中才走云端
   async onGenerateInsight() {
     const r = this.data.r;
     if (!r || this.data.insightLoading || this.data.insightState === 'loading') return;
@@ -110,14 +92,13 @@ Page({
         insightLoading: false,
         insightSections: cached.sections || [],
         insightLimitations: cached.limitations || [],
-        insightModel: 'AI 生成 · 本地缓存',
+        insightModel: 'AI 生成 · 本次会话缓存',
       });
       return;
     }
     await this.loadInsight(r, key);
   },
 
-  // 生成文化解读：云端 AI 优先，失败/超时/未开云 → 本地规则降级
   async loadInsight(archiveResult, cacheKey) {
     this.setData({
       insightState: 'loading',
@@ -132,8 +113,6 @@ Page({
     console.info('[insight] cloudReady =', cloudReady,
       '| env =', (app && app.globalData && app.globalData.cloudEnvId) || '(空)');
 
-    // 等待句柄挂在实例上：页面被关掉（onUnload）时必须清掉，否则定时器把页面闭包
-    // 钉住最长 8 秒；竞态结束后同样要清，避免空转。
     let timerId = 0;
     const timeout = new Promise((resolve) => {
       timerId = setTimeout(() => resolve(null), INSIGHT_TIMEOUT_MS);
@@ -145,19 +124,16 @@ Page({
     if (timerId) clearTimeout(timerId);
     this._insightTimer = 0;
 
-    // 到点没回：**本轮降级到本地规则**（PRD 冻结红线「8s 降级」），本地规则纯本地、
-    // 瞬时可出、永远有内容 —— 绝不能给用户看「暂不可用」。
-    // 云端仍在跑的结果本轮不采纳，只补写缓存，下次进同一档案直接命中，避免白烧 Token。
     let payload = settled;
     if (!payload) {
       payload = resolveInsight(archiveResult, { cloudAvailable: false });
       payload.reason = 'timeout';
+      // 晚到的成功结果只写本次会话缓存；跨会话由服务端模型版本缓存负责。
       work.then((res) => {
         if (res && res.usedAI && res.insight && cacheKey) cacheWrite(cacheKey, res.insight);
       });
     }
 
-    // 打印降级原因，便于真机排查（Console 可见）
     if (!payload.usedAI) {
       console.warn('[insight] 走本地规则降级，原因：', payload.reason);
     } else {
@@ -166,7 +142,6 @@ Page({
 
     if (payload && payload.insight) {
       const ins = payload.insight;
-      // 仅缓存云端 AI 产出（本地规则文本零成本即时生成，无需占用缓存）
       if (payload.usedAI && cacheKey) cacheWrite(cacheKey, ins);
       this.setData({
         insightState: 'done',
@@ -188,13 +163,10 @@ Page({
     };
   },
 
-  // 保存档案卡片
   onSaveCard() {
     const r = this.data.r;
     if (!r) { wx.showToast({ title: '暂无可生成的档案', icon: 'none' }); return; }
     const ctx = wx.createCanvasContext('shareCard', this);
-    // 卡高 760（与 wxml canvas 的 height 同步）。明细 6–7 行（有坐标时 7 行）行距 38，
-    // 五行条 26 行标签后 26 起、行距 30；末行条形底 ≤698，页脚 H-30=730，不重叠。
     const W = 600, H = 760;
     const dark = (wx.getSystemInfoSync && wx.getSystemInfoSync().theme) === 'dark';
     const P = dark ? {
@@ -236,7 +208,6 @@ Page({
     ctx.stroke();
 
     let y = 264;
-    // 地点与坐标拆成两行：合写会被 clipText 截成「… · 东…」，坐标信息全丢
     const rows = [
       ['农历', r.lunarText || '—'],
       ['出生地点', r.placeName],
@@ -253,7 +224,6 @@ Page({
       ctx.setTextAlign('left');
       ctx.setFillStyle(P.label);
       ctx.fillText(k, 48, y);
-      // 值右对齐到卡片右缘（与档案页 kv 行一致），超宽按估宽截断
       ctx.setTextAlign('right');
       ctx.setFillStyle(P.title);
       ctx.fillText(clipText(v, W - 48 - CARD_VALUE_X, 24), W - 48, y);
@@ -270,7 +240,6 @@ Page({
       const trackW = W - 48 * 2;
       const unit = trackW / 5;
       r.tally.forEach((t) => {
-        // 条形高 16，文字基线取 y+16（20 号字视觉中心 ≈ y+8）→ 与条形垂直居中
         ctx.setFillStyle(P.title);
         ctx.setFontSize(20);
         ctx.fillText(t.name, 48, y + 16);
@@ -310,7 +279,6 @@ Page({
     });
   },
 
-  // 返回首页继续修改
   goBackHome() {
     wx.navigateBack();
   },

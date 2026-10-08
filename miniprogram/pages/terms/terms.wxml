@@ -6,19 +6,22 @@
     <view class="hint">点击切换年份 ▾</view>
   </view>
 
-  <!-- 节气列表 -->
-  <view class="list" wx:if="{{rows.length}}">
-    <view class="card" wx:for="{{rows}}" wx:key="ord">
-      <view class="badge">{{item.monthRef}}</view>
-      <view class="body">
-        <view class="name">{{item.name}}</view>
-        <view class="tip">农历月参考</view>
+  <!-- 节气列表（按四季分组） -->
+  <view class="list" wx:if="{{groups.length}}">
+    <block wx:for="{{groups}}" wx:key="name" wx:for-item="g">
+      <view class="group-title">{{g.name}}</view>
+      <view class="card" wx:for="{{g.rows}}" wx:for-item="item" wx:key="ord">
+        <view class="badge">{{item.monthRef}}月</view>
+        <view class="body">
+          <view class="name">{{item.name}}</view>
+          <view class="tip">{{item.tip}}</view>
+        </view>
+        <view class="right">
+          <view class="date">{{item.date}}</view>
+          <view class="time">周{{item.wcn}} · {{item.time}}</view>
+        </view>
       </view>
-      <view class="right">
-        <view class="date">{{item.date}}</view>
-        <view class="time">周{{item.wcn}} · {{item.time}}</view>
-      </view>
-    </view>
+    </block>
   </view>
   <view wx:else class="empty">该年份暂不支持</view>
 

@@ -44,11 +44,14 @@
   margin-top: 24rpx;
   height: 92rpx;
   line-height: 92rpx;
+  /* 微信 button UA 的 padding: 8px 24px + border-box 会把文字压低 8px，必须置零垂直向 */
+  padding-top: 0;
+  padding-bottom: 0;
   background: var(--btn);
   color: #fff;
   border-radius: 16rpx;
   font-size: 29rpx;
-  letter-spacing: 2rpx;
+  text-align: center;
 }
 .btn-fill::after { border: none; }
 

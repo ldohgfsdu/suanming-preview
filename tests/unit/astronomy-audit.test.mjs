@@ -180,7 +180,8 @@ test('A10 新月时刻与日食/权威锚点 ±6min', () => {
     // 权威 UTC 时刻转为北京显示（当日或次日）
     const utc = { y, m, d, H, M };
     const o = { ...utc, H: utc.H + 8 };
-    let dd = o.H, dh = Math.floor(o.H / 24); o.H -= dh * 24;
+    const dh = Math.floor(o.H / 24);
+    o.H -= dh * 24;
     const ng = jdeToGregorian(gregorianToJde(utc.y, utc.m, utc.d) + dh);
     o.y = ng.y; o.m = ng.m; o.d = ng.d;
     const diff = durMin(gb, o);
@@ -227,8 +228,10 @@ test('A13 真太阳时经度敏感：东西差使修正量不同、时柱跨时�
 
 // =========================== 边界 ===========================
 test('A14 立春跨年：年柱切换由绝对出生瞬间（经度 120 精确）重判', () => {
+  // 立春 2024-02-04 16:26:53（北京）：此前 → 癸卯，此后 → 甲辰
   assert.strictEqual(computeArchive(2024, 2, 4, 0, 120).four.year.ganz, '癸卯');
-  assert.strictEqual(computeArchive(2024, 2, 4, 12, 120).four.year.ganz, '甲辰');
+  assert.strictEqual(computeArchive(2024, 2, 4, 12, 120).four.year.ganz, '癸卯');
+  assert.strictEqual(computeArchive(2024, 2, 4, 17, 120).four.year.ganz, '甲辰');
 });
 
 test('A15 春节/立春/冬至 跨年一致性（2020/2023/2026）', () => {

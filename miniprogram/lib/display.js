@@ -64,7 +64,7 @@ export function fmtAgeDays(ageDays) {
 }
 
 /** 用户层：经纬度坐标，统一到小数点后 1 位（地名为主，数字弱化）。 */
-export function fmtCoord(lng, lat, prefix /* '东经'/'北纬' 由调用处按需拼 */ ) {
+export function fmtCoord(lng, lat) {
   const l = (v) => (v == null || !isFinite(v) ? '—' : Number(v).toFixed(1));
   return { lng: l(lng), lat: l(lat), sep: ' · ' };
 }

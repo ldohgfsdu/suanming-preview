@@ -34,7 +34,7 @@
         <view class="t-v">{{today.nowText}}</view>
       </view>
     </view>
-    <view class="today-moon">月相 {{today.moon}}<text wx:if="{{today.moonAge}}">（朔望月龄 {{today.moonAge}} 天）</text></view>
+    <view class="today-moon">月相 {{today.moon}}<text wx:if="{{today.moonAge}}">（朔望月龄 {{today.moonAge}}）</text></view>
     <view class="today-foot" bindtap="goTerms">查看全年节气日历 ›</view>
   </view>
 
@@ -73,35 +73,24 @@
       <view class="lunar-preview" wx:if="{{lunarPreview}}">⇄ 对应公历 {{lunarPreview}}</view>
     </block>
 
-    <!-- 出生时刻：时辰（传统）/ 精确到分（专业）双模式 -->
+    <!-- 出生时间：直接选 时:分（不设十二时辰档位；十二时辰由时刻自动推导，只作展示） -->
     <view class="row row-noborder time-row">
-      <view class="label">出生时刻</view>
-
-      <!-- 模式切换 -->
-      <view class="time-mode">
-        <view class="time-mode-item {{timeMode === 'shichen' ? 'is-on' : ''}}" data-mode="shichen" bindtap="onTimeModeTap">时辰</view>
-        <view class="time-mode-item {{timeMode === 'precise' ? 'is-on' : ''}}" data-mode="precise" bindtap="onTimeModeTap">精确到分</view>
-      </view>
+      <view class="label">我知道出生时间</view>
+      <switch class="time-switch" checked="{{!timeUnknown}}" color="#9a6b4f" bindchange="onTimeKnownChange" />
     </view>
 
-    <!-- 时辰模式 -->
-    <view class="row" wx:if="{{timeMode === 'shichen'}}">
-      <view class="label label-sub">选择时辰</view>
-      <picker class="picker" mode="selector" range="{{hourOptions}}" value="{{hourIdx}}" bindchange="onHourChange">
-        <view class="picker-value">{{hourLabel}}</view>
+    <view class="row">
+      <view class="label label-sub">出生时刻</view>
+      <picker class="picker picker-time" mode="time" value="{{preciseTime}}" disabled="{{timeUnknown}}" bindchange="onTimeChange">
+        <view class="picker-value {{timeUnknown ? 'is-off' : ''}}">{{timeUnknown ? '未填写' : preciseTime}}</view>
       </picker>
     </view>
 
-    <!-- 精确模式：原生时间选择器（时 + 分） -->
-    <view class="row" wx:if="{{timeMode === 'precise'}}">
-      <view class="label label-sub">选择时刻</view>
-      <picker class="picker picker-time" mode="time" value="{{preciseTime}}" bindchange="onPreciseTimeChange">
-        <view class="picker-value">{{preciseTime}}</view>
-      </picker>
+    <view class="time-hint" wx:if="{{!timeUnknown}}">
+      对应 {{shichenHint}}，真太阳时与时辰判定按此时刻计算。
     </view>
-
-    <view class="time-hint" wx:if="{{timeMode === 'precise'}}">
-      精确到分钟后，真太阳时校正与时辰判定均按实际时刻计算（历法依据：真太阳时）。
+    <view class="time-hint" wx:else>
+      未填写时时柱按「时辰未知」占位，其余历法数据照常计算。
     </view>
 
     <!-- 性别（存档用，不计入历法数据） -->

@@ -56,6 +56,16 @@ Page({
     });
   },
 
+  // 空状态：没有可「重新生成」的记录，直接回输入页（onUse 需要 data-id，此处不可复用）
+  goCreate() {
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
+      wx.navigateBack();
+      return;
+    }
+    wx.navigateTo({ url: '/pages/index/index' });
+  },
+
   // 从历史回到输入页（一次性带入该记录的日期）
   onUse(e) {
     const id = e.currentTarget.dataset.id;

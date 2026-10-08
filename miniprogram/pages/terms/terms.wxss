@@ -33,6 +33,15 @@
   gap: 20rpx;
 }
 
+.group-title {
+  font-size: 24rpx;
+  color: var(--muted);
+  letter-spacing: 3rpx;
+  margin-top: 8rpx;
+  margin-bottom: -8rpx;
+}
+.group-title:first-child { margin-top: 0; }
+
 .card {
   display: flex;
   align-items: center;

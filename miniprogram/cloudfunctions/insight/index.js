@@ -23,7 +23,7 @@ const tcbApp = tcb.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const ai = tcbApp.ai();
 
 const OUTPUT_VERSION = 'insight-1.0';
-const PROMPT_VER = 'insight-prompt-v1';
+const PROMPT_VER = 'insight-prompt-v2';
 // GroupName：主托管分组（多模型池，TokenHub 支撑）
 const MODEL_GROUP = 'cloudbase';
 // 模型 id：须为 DescribeManagedAIModelList 返回的精确 id（区分大小写，勿凭印象写）
@@ -36,6 +36,7 @@ const BANNED_WORDS = [
   '运势', '运程', '流年', '大运', '注定', '命中',
   '吉凶', '宜忌', '化解', '犯太岁', '开运', '招财', '转运',
   '合婚', '择日', '看日子', '八字算',
+  '排盘', '预测',
   '旺衰', '喜用', '用神', '忌神',
   '十神', '藏干', '神煞', '空亡', '胎元', '命宫', '身宫',
 ];
@@ -50,17 +51,22 @@ const SYSTEM_PROMPT = [
   '4. 禁止出现以下词语：' + BANNED_WORDS.join('、'),
   '5. 事实不足时输出「无法判定」，不得补全，也不得替用户选择流派。',
   '6. 禁止医疗、投资、法律、婚恋决策类结论。',
-  '7. 每条 content 不超过 120 字，语气平实，避免宿命论措辞。',
+  '7. 禁止写性格、事业、财运、婚姻、健康之类的个人断言；只谈历法与文化。',
+  '8. 输出 4-6 个小节：第 1 节固定标题「总论」，先用两三句话说明这份档案由哪几套计时系统叠成；其余小节按 节气坐标 / 农历日期 / 四柱干支 / 十二时辰 / 五行字面分布 / 太阳时间 逐项展开，只挑输入里有事实的小节写。',
+  '9. 每节 content 150-300 字，分两段，段间用 \\n\\n 换行：第一段是结论式陈述（把输入里的数值原样写进去），第二段说明它出自哪套历法体系、在传统文化里承担什么角色。单节不超过 400 字。',
+  '10. 语气平实，避免宿命论措辞。',
   '',
   '输出严格的 JSON，不要任何多余文字或 markdown 代码块标记：',
   '{',
   '  "sections": [',
-  '    { "id": "s1", "title": "小节标题", "contentType": "FACT", "content": "正文", "evidenceIds": ["e_term"] }',
+  '    { "id": "s0", "title": "总论", "contentType": "CULTURAL_CONTEXT", "content": "第一段\\n\\n第二段", "evidenceIds": ["e_pillars", "e_term"] },',
+  '    { "id": "s1", "title": "节气坐标", "contentType": "FACT", "content": "第一段\\n\\n第二段", "evidenceIds": ["e_term"] }',
   '  ],',
-  '  "limitations": ["不含预测与判定"]',
+  '  "limitations": ["不作判定与推断"]',
   '}',
   '',
   'contentType 只能是 FACT 或 CULTURAL_CONTEXT。',
+  'evidenceIds 只能取：e_term、e_lunar、e_pillars、e_wuxing、e_solar。',
 ].join('\n');
 
 function jsonReply(ok, payload) {
@@ -191,7 +197,7 @@ function buildMessages(facts, repairHint) {
         JSON.stringify(facts, null, 2) +
         (repairHint
           ? '\n\n[上一轮输出未通过校验：' + repairHint + '。请修正后重新输出严格 JSON，不要任何额外文字。]'
-          : '\n\n请输出 2-4 个小节的严格 JSON。'),
+          : '\n\n请输出 4-6 个小节的严格 JSON，第 1 节标题为「总论」。'),
     },
   ];
 }
@@ -212,7 +218,7 @@ async function callModel(facts, repairHint) {
     model: MODEL,
     messages: buildMessages(facts, repairHint),
     temperature: 0.3,
-    maxTokens: 1200,
+    maxTokens: 1800,
   });
   // generateText 返回原始响应，文本在 content
   const text = (res && res.content) || '';
@@ -279,7 +285,7 @@ exports.main = async (event) => {
       model: MODEL,
       promptVer: promptVer || PROMPT_VER,
       sections: [],
-      limitations: ['不含预测与判定'],
+      limitations: ['不作判定与推断'],
       fallback: true,
       reason: lastError,
     },

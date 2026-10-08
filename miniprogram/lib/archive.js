@@ -88,7 +88,7 @@ export const DEFAULT_DAY_BOUNDARY_RULE = DayBoundaryRule.CHANGE_AT_ZI;
  *  - CHANGE_AT_MIDNIGHT → 一律不换日
  *
  * @param {number} y @param {number} m @param {number} d
- * @param {number} hour 0–23，或 -1 表示时辰不详
+ * @param {number} hour 0–23（可为小数：墙钟精确到分、或太阳钟 canonHour 都合法），或 -1 表示时辰不详
  * @param {string} rule DayBoundaryRule 之一
  * @returns {{ y:number, m:number, d:number, hourForZhi:number|null, dayShifted:boolean }}
  */
@@ -233,8 +233,17 @@ export function trueSolarToLocal(y, m, d, hour, lonDeg) {
 export function computeArchive(y, m, d, hour = -1, lonDeg = null,
   dayBoundaryRule = DEFAULT_DAY_BOUNDARY_RULE) {
   const jd = gregorianToJde(y, m, d);
+  // 出生「绝对瞬间」＝北京墙钟时刻（双时间轴的年/月柱与节气 bracket 一律按它判）。
+  // gregorianToJde(y,m,d) 返回的是该历日的**正午 UT**（= 北京 20:00），
+  // 因此 (wallHour - 20)/24 才把它换算回北京墙钟；时辰不详时取当日午正，不伪造具体时刻。
+  // 旧写法 `gregorianToJde(y2,m2,d2) + hour/24` 等价于晚 20 小时，
+  // 会把立春与 12 个「节」的判定点整体推后，交界日的年柱/月柱随之错判。
+  const wallHour = hour >= 0 ? hour : 12;
+  const wallJde = jd + (wallHour - 20) / 24;
   // 真太阳时修正：仅当提供了经度且时辰已知时，才进入“单一时间事实源”chain。
-  const rawCanon = (Number.isFinite(lonDeg) && hour >= 0 && hour <= 23)
+  // hour 为页面折算后的小数小时（如 23.983），故判据必须是 < 24 而非 <= 23，
+  // 否则精确到分的 23:01–23:59 会被静默跳过真太阳时校正。
+  const rawCanon = (Number.isFinite(lonDeg) && hour >= 0 && hour < 24)
     ? trueSolarToLocal(y, m, d, hour, lonDeg) : null;
   // 若真太阳时修正把本地历日推到受支持年份(1900-2100)之外（仅极能边界），则回退到该日
   // 的非修正路径，避免越界换算抛错。
@@ -245,8 +254,10 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
   if (canon) {
     // —— 单一时间事实源：先确定 真太阳时->本地历日+太阳时，再统一算各时间敏感柱 ——
     y2 = canon.canonDate.y; m2 = canon.canonDate.m; d2 = canon.canonDate.d;
-    // 日柱：先按子时换日口径修正历日（早子时口径下 23:00 后已属次日）
-    const bnd = applyDayBoundary(y2, m2, d2, hour, dayBoundaryRule);
+    // 日柱：按**地方太阳钟**的子时换日口径修正历日（双时间轴纪律：日界走太阳钟）。
+    // 必须传 canon.canonHour —— 旧实现传墙钟 hour，等于用墙钟判据去切太阳日，
+    // 「太阳钟 23:46 / 墙钟 00:00」这类输入的日界判据会整体错位。
+    const bnd = applyDayBoundary(y2, m2, d2, canon.canonHour, dayBoundaryRule);
     y2 = bnd.y; m2 = bnd.m; d2 = bnd.d;
     dp = dayPillar(gregorianToJde(y2, m2, d2));
     // 年/月柱由出生"绝对瞬间"的太阳黄经判定（立春/节边界）
@@ -255,9 +266,9 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
     //   · 日界/时柱        → **地方太阳钟**（真太阳时修正后的时刻）
     // 理由：真太阳时修正只用于「日界/时柱」的太阳钟口径，
     //       绝不可用来挪动出生瞬间本身，否则会错误地跨过立春或「节」的交接时刻。
-    // 注意：这里必须用 jd（已含日界修正的历日 00:00 基准）+ 墙钟小时，
-    //       不得引入真太阳时修正量，也不得用 canon.canonHour。
-    const absJde = gregorianToJde(y2, m2, d2) + (hour >= 0 ? hour / 24 : 12 / 24);
+    // 注意：必须用原始输入的墙钟瞬间 wallJde —— 不得引入真太阳时修正量、
+    //       不得用 canon.canonHour，也不得用日界修正后的历日 y2/m2/d2。
+    const absJde = wallJde;
     yp = yearPillar(absJde);
     mp = monthPillar(absJde, yp.ganzhiYear);
     // 时柱由修正后的太阳时判定；时干所用日干依子时换日口径取
@@ -273,9 +284,9 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
     // 无真太阳时修正路径（未提供地点或超界）
     const bnd = applyDayBoundary(y, m, d, hour, dayBoundaryRule);
     y2 = bnd.y; m2 = bnd.m; d2 = bnd.d;
-    yp = yearPillar(gregorianToJde(y2, m2, d2));
+    yp = yearPillar(wallJde);
     dp = dayPillar(gregorianToJde(y2, m2, d2));
-    mp = monthPillar(gregorianToJde(y2, m2, d2), yp.ganzhiYear);
+    mp = monthPillar(wallJde, yp.ganzhiYear);
     if (bnd.hourForZhi != null) {
       const stemBase = hourStemDayStem(
         { y: y2, m: m2, d: d2 }, bnd.hourForZhi, dayBoundaryRule, dp,
@@ -286,8 +297,9 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
     }
   }
 
-  // 节气 bracket（前后各一）——由 engine 的单一事实源 solarTermResultAt 提供
-  const { prev, next, daysToNext } = solarTermResultAt(jd);
+  // 节气 bracket（前后各一）——由 engine 的单一事实源 solarTermResultAt 提供。
+  // 按出生绝对瞬间判（旧实现用历日正午 UT，节气当天会把上/下节气看错最多 20 小时）。
+  const { prev, next, daysToNext } = solarTermResultAt(wallJde);
 
   const stems = [yp.gan, mp ? mp.gan : null, dp.gan, hp ? hp.gan : null].filter(Boolean);
   const zhis = [yp.zhi, mp ? mp.zhi : null, dp.zhi, hp ? hp.zhi : null].filter(Boolean);

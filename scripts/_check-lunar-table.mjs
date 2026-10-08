@@ -1,6 +1,5 @@
 // 黄金对拍：用 generate() 生成农历表并核对已知锚点。
-import { newMoonJde } from '../miniprogram/lib/archive.js';
-import { gregorianToJde, jdeToGregorian } from '../miniprogram/lib/engine.js';
+import { gregorianToJde } from '../miniprogram/lib/engine.js';
 import { generate, monthStartJ } from './gen-lunar-table.mjs';
 
 const anchorJdn = gregorianToJde(2023, 1, 22);

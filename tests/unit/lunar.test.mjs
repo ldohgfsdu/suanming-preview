@@ -45,5 +45,20 @@ for (const [y, m, d, ly, lm, lleap, ld, risky] of CASES) {
   assert.ok(typeof r.text === 'string' && r.text.length > 0, 'text 非空');
   pass++;
 }
+// 文案日名取 DAY_CN（初一…三十）。回归：曾误写 MONTH_CN[day]，
+// 于是 day≤12 时输出「正月正/腊月正」这类把月名当日名的串，day>12 时直接掉成裸数字。
+const TEXT_CASES = [
+  [2024, 2, 10, '2024年正月初一'],
+  [2024, 2, 22, '2024年正月十三'],
+  [2024, 3, 11, '2024年二月初二'],
+  [2023, 12, 13, '2023年冬月初一'],
+];
+let textPass = 0;
+for (const [y, m, d, want] of TEXT_CASES) {
+  assert.equal(solarToLunar(y, m, d).text, want, `text(${y}-${m}-${d})`);
+  textPass++;
+}
+console.log(`lunar text tests: PASS ${textPass}/${TEXT_CASES.length}`);
+
 console.log(`lunar lookup tests: PASS ${pass}/${CASES.length}`);
 process.exit(fail > 0 ? 1 : 0);

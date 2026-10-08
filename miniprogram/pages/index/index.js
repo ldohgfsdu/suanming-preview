@@ -38,7 +38,6 @@ const SHICHEN = [
   { name: '戌时', range: '19:00–21:00', hour: 20 },
   { name: '亥时', range: '21:00–23:00', hour: 22 },
 ];
-const HOUR_OPTIONS = ['时辰未知'].concat(SHICHEN.map((s) => `${s.name}（${s.range}）`));
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 
@@ -71,18 +70,14 @@ Page({
     lunarSel: null,               // {year, month, leap, day}
     lunarPreview: '',            // 农历→公历 即时换算预览
 
-    // 出生时刻：两种模式
-    //   'shichen' = 只选十二时辰（传统方式，2 小时粒度）
-    //   'precise' = 精确到分钟（用于真太阳时校正，分钟级差异可跨时辰/跨日）
-    timeMode: 'shichen',
-    // 时辰模式
-    hourOptions: HOUR_OPTIONS,
-    hourIdx: 0,
+    // 出生时间：直接选 时:分（不设十二时辰档位）。
+    // 十二时辰由时刻自动推导，仅在结果与提示里展示，不作为输入维度。
+    timeUnknown: true,            // 不知道出生时间 → 时柱按「时辰未知」占位
     hour: -1,                     // 内部小时数（-1=未知）
-    hourLabel: '时辰未知',
-    // 精确模式（原生 time 选择器，精确到分）
-    preciseTime: '12:00',
     minute: 0,                    // 分钟（0–59）
+    preciseTime: '12:00',         // 原生 time 选择器值 HH:MM
+    shichenHint: '',              // 由时刻推导的十二时辰提示（未填写时为空）
+    hourLabel: '时辰未知',        // 结果/历史回显（已填写时为 HH:MM）
 
     // 性别（仅供档案存档，不参与历法计算）
     genders: ['男', '女'],
@@ -136,9 +131,17 @@ Page({
     this.initLunarToToday(y, m, d);
     this.initPlace();
     this.buildToday(y, m, d);
-    // 时钟
+    // 时钟改由 onShow 启动、onHide 停止：本页会被 navigateTo 压栈隐藏，
+    // 只在 onUnload 清理的话，隐藏期间仍每 15s setData 一次（白耗渲染）。
     this.refreshClock();
-    this._ticker = setInterval(() => this.refreshClock(), 15000);
+  },
+
+  onShow() {
+    if (!this._ticker) this._ticker = setInterval(() => this.refreshClock(), 15000);
+  },
+
+  onHide() {
+    if (this._ticker) { clearInterval(this._ticker); this._ticker = 0; }
   },
 
   onUnload() {
@@ -160,17 +163,20 @@ Page({
     const now = new Date();
     const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
     const t = `${y}-${pad(m)}-${pad(d)}`;
-    // 时辰：按当前真实时刻归入十二时辰槽（回填给“出生时刻”输入，便于立即生成）
-    const h = now.getHours();
-    const idx = shichenIndexOfHour(h);
-    const s = SHICHEN[idx];
+    // 出生时间回填为当前时刻（已知时间开关同时打开，便于立即生成）
+    const hh = now.getHours();
+    const mm = now.getMinutes();
+    const s = SHICHEN[shichenIndexOfHour(hh)];
     this.setData({
-      hourIdx: idx + 1,        // 选择器第 0 项为“时辰未知”
-      hour: s.hour,           // 槽中点，供内部时辰干支计算
-      hourLabel: `${s.name}（${s.range}）`,
+      timeUnknown: false,
+      hour: hh,
+      minute: mm,
+      preciseTime: `${pad2(hh)}:${pad2(mm)}`,
+      hourLabel: `${pad2(hh)}:${pad2(mm)}`,
+      shichenHint: `${s.name}（${s.range}）`,
       hasResult: false,
       result: null,
-    }, () => wx.showToast({ title: '已更新为当前日期与时辰', icon: 'none' }));
+    }, () => wx.showToast({ title: '已更新为当前日期与时刻', icon: 'none' }));
     this.initSolar(t);
     this.initLunarToToday(y, m, d);
     this.buildToday(y, m, d);   // 今日天时卡同步刷新（含当前时刻）
@@ -277,61 +283,45 @@ Page({
     this.setData({ calMode: 'lunar', hasResult: false, result: null });
   },
 
-  // ============ 时辰 ============
-  onHourChange(e) {
-    const idx = Number(e.detail.value);
-    if (idx === 0) {
-      this.setData({ hourIdx: 0, hour: -1, hourLabel: '时辰未知', hasResult: false, result: null });
+  // ============ 出生时间 ============
+  // 「我知道出生时间」开关：关闭即回退到「时辰未知」，不伪造时刻
+  onTimeKnownChange(e) {
+    const known = !!(e.detail && e.detail.value);
+    if (!known) {
+      this.setData({
+        timeUnknown: true, hour: -1, minute: 0,
+        hourLabel: '时辰未知', shichenHint: '',
+        hasResult: false, result: null,
+      });
       return;
     }
-    const s = SHICHEN[idx - 1];
-    this.setData({
-      hourIdx: idx,
-      hour: s.hour,
-      hourLabel: `${s.name}（${s.range}）`,
-      hasResult: false, result: null,
-    });
-  },
-
-  // 切换「时辰 / 精确到分」两种输入模式
-  onTimeModeTap(e) {
-    const mode = e.currentTarget.dataset.mode;
-    if (mode === this.data.timeMode) return;
-    if (mode === 'precise') {
-      // 由当前时辰推导默认时刻（取时辰起点），避免切换后时段跳变
-      const base = this.data.hour >= 0 ? this.data.hour : 12;
-      this.setData({
-        timeMode: 'precise',
-        preciseTime: `${pad2(base)}:00`,
-        hour: base,
-        minute: 0,
-        hasResult: false, result: null,
-      });
-    } else {
-      // 回到时辰模式：用当前小时反查所属时辰
-      const h = this.data.hour >= 0 ? this.data.hour : 12;
-      const si = shichenIndexOfHour(h);
-      this.setData({
-        timeMode: 'shichen',
-        hourIdx: si + 1,
-        hour: SHICHEN[si].hour,
-        minute: 0,
-        hasResult: false, result: null,
-      });
-    }
+    const seg = String(this.data.preciseTime || '12:00').split(':');
+    const h = parseInt(seg[0], 10);
+    const m = parseInt(seg[1], 10);
+    this.setTime(Number.isFinite(h) ? h : 12, Number.isFinite(m) ? m : 0);
   },
 
   // 原生 time 选择器变更（value 形如 "14:30"）
-  onPreciseTimeChange(e) {
-    const v = String(e.detail.value || '12:00');
-    const seg = v.split(':');
+  onTimeChange(e) {
+    const seg = String(e.detail.value || '12:00').split(':');
     const h = parseInt(seg[0], 10);
     const m = parseInt(seg[1], 10);
     if (!Number.isFinite(h)) return;
+    this.setTime(h, Number.isFinite(m) ? m : 0);
+  },
+
+  // 单一时间源：时分 → 内部 hour/minute + 回显 + 十二时辰推导提示
+  setTime(h, m) {
+    const hh = Math.min(23, Math.max(0, Math.round(h)));
+    const mm = Math.min(59, Math.max(0, Math.round(m)));
+    const s = SHICHEN[shichenIndexOfHour(hh)];
     this.setData({
-      preciseTime: `${pad2(h)}:${pad2(Number.isFinite(m) ? m : 0)}`,
-      hour: h,
-      minute: Number.isFinite(m) ? m : 0,
+      timeUnknown: false,
+      hour: hh,
+      minute: mm,
+      preciseTime: `${pad2(hh)}:${pad2(mm)}`,
+      hourLabel: `${pad2(hh)}:${pad2(mm)}`,
+      shichenHint: `${s.name}（${s.range}）`,
       hasResult: false, result: null,
     });
   },
@@ -497,14 +487,20 @@ Page({
     const input = this.resolveDateInput();
     if (!input) { wx.showToast({ title: '请检查出生日期', icon: 'none' }); return; }
     const lon = this.finalizeLon();
-    // 精确模式：把分钟折算为小数小时（如 14:30 → 14.5），引擎按连续时刻做真太阳时与时辰判定
-    const minute = this.data.timeMode === 'precise' ? this.data.minute : 0;
+    // 分钟直接来自「出生时间」选择器（14:30 → 14.5 小时），引擎按连续时刻做真太阳时与时辰判定
+    const minute = this.data.timeUnknown ? 0 : this.data.minute;
     const hour = this.data.hour >= 0 ? this.data.hour + minute / 60 : -1;
     // —— 单一时间事实源：整个生成链路只在这里计算一次 ——
     let f = null;
     try {
       f = computeArchive(input.y, input.m, input.d, hour, lon);
-    } catch (e) { wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' }); return; }
+    } catch (e) {
+      // engine 只在年份越界时抛 `range <year>`（engine.js:38）；其余异常不能谎报成年份问题
+      const msg = String((e && e.message) || '');
+      console.error('[archive] computeArchive 失败：', msg);
+      wx.showToast({ title: /^range\s/.test(msg) ? '仅支持 1900-2100 年' : '生成失败请重试', icon: 'none' });
+      return;
+    }
 
     // 真太阳时跨时辰/跨日确认：仅当「已知时辰 + 提供了经度」时评估。
     // 跨日/跨时辰时先用 Modal 让用户确认，确认后再按同一份 f 生成（不重复计算）。
@@ -604,7 +600,7 @@ Page({
         moonAge: f.moon ? fmtAgeDays(f.moon.ageDays) : '',
         moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
         trueSolar: f.trueSolar.degraded ? '未提供地点' : fmtTrueSolarMinutes(f.trueSolar.offsetMinutes),
-        bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:${pad(this.data.timeMode === 'precise' ? this.data.minute : 0)}` : null,
+        bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:${pad(this.data.minute)}` : null,
         tsDateTime: (f.trueSolar && f.trueSolar.canonHour != null && !f.trueSolar.degraded)
           ? (f.trueSolar.dayChanged
             ? `${f.trueSolar.canonDateText} ${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`
@@ -627,7 +623,9 @@ Page({
         },
       });
     } catch (err) {
-      wx.showToast({ title: '仅支持 1900-2100 年', icon: 'none' });
+      // 保存历史 / 跳转结果页阶段：年份范围在上一处已校验过，这里不该再谎报成年份问题
+      console.error('[archive] commitResult 失败：', (err && err.message) || err);
+      wx.showToast({ title: '生成失败请重试', icon: 'none' });
     }
   },
 
@@ -656,7 +654,9 @@ Page({
       createdAt: new Date().toISOString(),
       solar: `${y}-${pad(m)}-${pad(d)}`,
       yearGanzhi: f.four.year ? f.four.year.ganz : '',
+      monthGanzhi: f.four.month ? f.four.month.ganz : '',
       dayGanzhi: f.four.day ? f.four.day.ganz : '',
+      hourGanzhi: f.four.hour ? f.four.hour.ganz : '',
       gender: this.data.gender,
       placeLabel: (lon != null && this.data.placeLabel) ? this.data.placeLabel : '未选择地点',
       placeCoord: (lon != null && !this.data.lonActive)
@@ -664,11 +664,11 @@ Page({
         : (lon != null ? fmtLng(lon) : ''),
       hour: this.data.hour,
       hourLabel: this.data.hourLabel,
-      hourIdx: this.data.hourIdx,
-      timeMode: this.data.timeMode,
-      minute: this.data.timeMode === 'precise' ? this.data.minute : 0,
+      // 时间单一源：已知=时分直输，未知=「时辰未知」占位（timeUnknown 供旧记录兼容回读）
+      timeUnknown: !!this.data.timeUnknown,
+      minute: this.data.timeUnknown ? 0 : this.data.minute,
       // 真太阳时跨日/修正（单一时间源，重新打开不改算）
-      bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:${pad(this.data.timeMode === 'precise' ? this.data.minute : 0)}` : null,
+      bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:${pad(this.data.minute)}` : null,
       tsDateTime: (f.trueSolar && !f.trueSolar.degraded && f.trueSolar.canonHour != null)
         ? (f.trueSolar.dayChanged
           ? `${f.trueSolar.canonDateText} ${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`
@@ -679,8 +679,13 @@ Page({
     };
     try {
       const list = wx.getStorageSync(HISTORY_KEY) || [];
-      list.unshift(rec);
-      const trimmed = list.slice(0, MAX_HISTORY);
+      // 同一份档案（日期 + 时刻 + 地点）重复生成只保留最新一条，避免列表堆成重复卡片；
+      // 旧记录可能缺 minute，统一按 0 归一后再比。
+      const sig = (x) => `${x.solar}|${x.hour}|${Number.isFinite(x.minute) ? x.minute : 0}|${x.placeCoord || ''}`;
+      const s = sig(rec);
+      const rest = list.filter((x) => sig(x) !== s);
+      rest.unshift(rec);
+      const trimmed = rest.slice(0, MAX_HISTORY);
       wx.setStorageSync(HISTORY_KEY, trimmed);
     } catch (e) { /* 存储失败静默，不影响本次生成 */ }
   },
@@ -713,22 +718,24 @@ Page({
       set.solarDateLabel = r.solar;
     }
     if (r.gender === '男' || r.gender === '女') set.gender = r.gender;
-    // 恢复出生时刻（时辰或精确到分），让“重新生成”与历史记录保持一致（时间单一源）
+    // 恢复出生时间，让“重新生成”与历史记录保持一致（时间单一源）。
+    // 旧记录两种都换算成 时:分 直填：timeMode='precise' 带分钟，'shichen' 只有时辰槽起点；
+    // 未知时刻（hour<0）回到「不知道出生时间」开关。
     if (Number.isInteger(r.hour) && r.hour >= 0 && r.hour < 24) {
+      const m = (Number.isInteger(r.minute) && r.minute >= 0 && r.minute < 60) ? r.minute : 0;
+      const s = SHICHEN[shichenIndexOfHour(r.hour)];
+      set.timeUnknown = false;
       set.hour = r.hour;
-      if (r.timeMode === 'precise') {
-        // 精确模式：连分钟一并恢复
-        const m = (Number.isInteger(r.minute) && r.minute >= 0 && r.minute < 60) ? r.minute : 0;
-        set.timeMode = 'precise';
-        set.minute = m;
-        set.preciseTime = `${pad2(r.hour)}:${pad2(m)}`;
-        set.hourLabel = r.hourLabel || set.preciseTime;
-      } else {
-        set.timeMode = 'shichen';
-        set.minute = 0;
-        set.hourIdx = (Number.isInteger(r.hourIdx) && r.hourIdx >= 0) ? r.hourIdx : (shichenIndexOfHour(r.hour) + 1);
-        set.hourLabel = r.hourLabel || SHICHEN[shichenIndexOfHour(r.hour)].name;
-      }
+      set.minute = m;
+      set.preciseTime = `${pad2(r.hour)}:${pad2(m)}`;
+      set.hourLabel = set.preciseTime;
+      set.shichenHint = `${s.name}（${s.range}）`;
+    } else {
+      set.timeUnknown = true;
+      set.hour = -1;
+      set.minute = 0;
+      set.hourLabel = '时辰未知';
+      set.shichenHint = '';
     }
     set.hasResult = false;
     set.result = null;

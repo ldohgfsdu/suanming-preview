@@ -5,7 +5,7 @@ import { computeArchive, ELEMENT_NAME, hourPillar } from '../../lib/archive.js';
 import { dayPillar, gregorianToJde } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { sunTimes } from '../../lib/sun.js';
-import { fmtTermDate, fmtDaysLeft, fmtDaysLeftTechnical } from '../../lib/display.js';
+import { fmtTermDate, fmtDaysLeft } from '../../lib/display.js';
 
 const MONTH_CN = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
 const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
@@ -85,7 +85,13 @@ Page({
 
   onLoad() {
     this.buildToday();
-    this._ticker = setInterval(() => this.refreshClock(), 30000);
+    // 时钟改由 onShow 启动、onHide 停止：本页被压栈隐藏时不必继续每 30s 刷一次
+  },
+  onShow() {
+    if (!this._ticker) this._ticker = setInterval(() => this.refreshClock(), 30000);
+  },
+  onHide() {
+    if (this._ticker) { clearInterval(this._ticker); this._ticker = 0; }
   },
   onUnload() {
     if (this._ticker) clearInterval(this._ticker);
@@ -112,10 +118,9 @@ Page({
       const pillars = ['year', 'month', 'day']
         .filter((k) => f.four[k])
         .map((k) => ({ label: f.four[k].label, ganz: f.four[k].ganz, elem: ELEMENT_NAME[f.four[k].element] }));
-      // 五行分布（横轴为文字，供今日页轻量展示）
+      // 五行分布：固定 5 项全列（含 0），与档案页「五行四柱字数」口径一致
       const tallyArr = ['wood', 'fire', 'earth', 'metal', 'water']
-        .map((k) => ({ name: ELEMENT_NAME[k], n: (f.tally[k] || 0) }))
-        .filter((x) => x.n > 0);
+        .map((k) => ({ name: ELEMENT_NAME[k], n: (f.tally[k] || 0) }));
       // 节气
       const prev = f.term.prev ? `${f.term.prev.name} ${fmtTermDate(f.term.prev.utc)}` : '—';
       const next = f.term.next ? `${f.term.next.name} ${fmtTermDate(f.term.next.utc)}` : '—';

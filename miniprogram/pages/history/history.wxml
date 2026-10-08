@@ -5,7 +5,7 @@
     <view class="empty-icon">📁</view>
     <view class="empty-text">还没有历史档案</view>
     <view class="empty-sub">生成一份档案后会自动保存在这里</view>
-    <button class="btn-back" bindtap="onUse">去生成档案</button>
+    <button class="btn-back" bindtap="goCreate">去生成档案</button>
   </view>
 
   <!-- 历史列表 -->
@@ -22,7 +22,9 @@
       </view>
       <view class="body">
         <view class="kv"><text class="k">年柱</text><text class="v">{{item.yearGanzhi}}</text></view>
+        <view class="kv" wx:if="{{item.monthGanzhi}}"><text class="k">月柱</text><text class="v">{{item.monthGanzhi}}</text></view>
         <view class="kv"><text class="k">日柱</text><text class="v">{{item.dayGanzhi}}<text wx:if="{{item.crossDay}}" class="tag-x">跨日</text></text></view>
+        <view class="kv" wx:if="{{item.hourGanzhi}}"><text class="k">时柱</text><text class="v">{{item.hourGanzhi}}</text></view>
         <view class="kv"><text class="k">出生时间</text><text class="v">{{item.hourLabel || '时辰未知'}}</text></view>
         <view class="kv" wx:if="{{item.tsDateTime}}"><text class="k">真太阳时</text><text class="v">{{item.tsDateTime}}</text></view>
         <view class="kv" wx:if="{{item.trueSolar}}"><text class="k">修正量</text><text class="v">{{item.trueSolar}}</text></view>

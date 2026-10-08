@@ -1,4 +1,4 @@
-# INSIGHT 云函数最小设计 v1（比赛轨）
+﻿# INSIGHT 云函数最小设计 v1（比赛轨）
 
 > 状态：**设计稿，待主人批准**（未写实现）
 > 日期：2026-10-04　轨道：**比赛轨**（受 D-005 双轨分离约束）
@@ -63,7 +63,7 @@ await app.ai().model('hunyuan-pro').call({ messages, temperature, maxTokens })
   "algorithmVersion": "bazi-core-1.3",
   "facts": { "pillars": {...}, "solarTerm": {...}, "solarTime": {...}, "lunar": {...}, "wuxing": {...} },
   "locale": "zh-CN",
-  "promptVer": "insight-prompt-v1"
+  "promptVer": "insight-prompt-v2"
 }
 ```
 
@@ -94,7 +94,7 @@ await app.ai().model('hunyuan-pro').call({ messages, temperature, maxTokens })
   "outputVersion": "insight-1.0",
   "docHash": "<sha256>",
   "model": "hunyuan-pro",
-  "promptVer": "insight-prompt-v1",
+  "promptVer": "insight-prompt-v2",
   "sections": [
     { "id": "s1", "title": "节气与干支", "contentType": "FACT", "content": "...", "evidenceIds": ["e1"] },
     { "id": "s2", "title": "五行字面分布", "contentType": "FACT", "content": "...", "evidenceIds": ["e2"] }

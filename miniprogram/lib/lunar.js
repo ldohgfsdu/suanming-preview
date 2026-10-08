@@ -34,7 +34,9 @@ export function solarToLunar(y, m, d) {
   if (!row) return null;
   const ly = row[0], lm = row[1], leap = row[2] === 1, startJDN = row[3];
   const day = jdn - startJDN + 1;
-  const text = (ly + '年') + (leap ? '闰' : '') + MONTH_CN[lm] + '月' + (MONTH_CN[day] || day);
+  // 日名取 DAY_CN（初一…三十）。曾误写成 MONTH_CN[day]，于是 day≤12 时输出
+  // 「正月正」「腊月正」这类把月名当日名的串，day>12 时又直接掉成裸数字。
+  const text = (ly + '年') + (leap ? '闰' : '') + MONTH_CN[lm] + '月' + (DAY_CN[day] || day);
   return { year: ly, month: lm, day, leap, approx: true, format: LUNAR_FORMAT, text };
 }
 export { LUNAR_TABLE, LUNAR_FORMAT };

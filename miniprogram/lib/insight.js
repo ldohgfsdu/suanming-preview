@@ -16,7 +16,7 @@
 import { ELEMENT_NAME } from './archive.js';
 
 export const OUTPUT_VERSION = 'insight-1.0';
-export const PROMPT_VER = 'insight-prompt-v1';
+export const PROMPT_VER = 'insight-prompt-v2';
 
 /** Output Guard 禁词集合（与云函数侧共用同一份口径）。 */
 export const BANNED_WORDS = [
@@ -24,6 +24,9 @@ export const BANNED_WORDS = [
   '运势', '运程', '流年', '大运', '注定', '命中',
   '吉凶', '宜忌', '化解', '犯太岁', '开运', '招财', '转运',
   '合婚', '择日', '看日子', '八字算',
+  // 微信内容安全按关键词命中，否定句式（「不含预测」「传统排盘」）同样违规：
+  // 自家文案已改写，此处同步封禁，防止模型把它们写回 sections。
+  '排盘', '预测',
   '旺衰', '喜用', '用神', '忌神',
   '十神', '藏干', '神煞', '空亡', '胎元', '命宫', '身宫',
 ];
@@ -43,16 +46,22 @@ export function buildFacts(r) {
   if (!r) return null;
   return {
     pillars: (r.pillars || []).map((p) => ({
-      label: p.label,
-      gan_zhi: p.ganz || null,
-      element: ELEMENT_NAME[p.element] || null,
+      // 结果页展示用「年柱」，云函数 PILLAR_LABELS 只收「年」；
+      // 事实层只交真值，展示后缀在此剥掉（否则服务端必判 pillar_label 非法）。
+      label: p.label ? String(p.label).replace(/柱$/, '') : null,
+      // 占位符 '—' 不是事实，未知一律 null（H-1），否则被 ganzhi_shape 拒。
+      gan_zhi: p.ganz && p.ganz !== '—' ? p.ganz : null,
+      // 结果页给的已是中文五行；ELEMENT_NAME 只用于兜底英文键，查不到就原样交。
+      element: p.element ? (ELEMENT_NAME[p.element] || p.element) : null,
     })),
     solarTerm: {
       prev: r.prevTerm || null,
       next: r.nextTerm || null,
     },
     solarTime: {
-      corrected: r.trueSolar || null,
+      // 未提供地点时页面给的是展示占位串（「未提供地点」），不是修正量；
+      // 交事实时归一为 null，否则规则模板会拼出「相差 未提供地点」。
+      corrected: (r.trueSolar && r.trueSolar !== '未提供地点') ? r.trueSolar : null,
       // 字段名以结果页实际产出的 crossDay 为准（此前误用 trueSolarDayChanged，导致恒为 false）
       day_changed: !!(r.crossDay),
     },
@@ -97,58 +106,136 @@ function countTally(facts) {
 }
 
 /**
+ * 地支 → 时辰 / 方位 / 月建 的静态文化对照（传统常识，不由事实推算）。
+ * 只在时柱地支已知时使用，避免把「未知」写成文化结论。
+ */
+const ZHI_CULTURE = {
+  子: { hours: '23:00–01:00', dir: '北（坎）', month: '十一月' },
+  丑: { hours: '01:00–03:00', dir: '东北（艮）', month: '十二月' },
+  寅: { hours: '03:00–05:00', dir: '东北（艮）', month: '正月' },
+  卯: { hours: '05:00–07:00', dir: '东（震）', month: '二月' },
+  辰: { hours: '07:00–09:00', dir: '东南（巽）', month: '三月' },
+  巳: { hours: '09:00–11:00', dir: '东南（巽）', month: '四月' },
+  午: { hours: '11:00–13:00', dir: '南（离）', month: '五月' },
+  未: { hours: '13:00–15:00', dir: '西南（坤）', month: '六月' },
+  申: { hours: '15:00–17:00', dir: '西南（坤）', month: '七月' },
+  酉: { hours: '17:00–19:00', dir: '西（兑）', month: '八月' },
+  戌: { hours: '19:00–21:00', dir: '西北（乾）', month: '九月' },
+  亥: { hours: '21:00–23:00', dir: '西北（乾）', month: '十月' },
+};
+
+/**
  * 规则降级：完全确定性、零模型、无网络。
- * 只做「事实 → 文化背景」的直白陈述，不含任何判断。
+ * 只做「事实 → 文化背景」的陈述，不含任何判断。
+ *
+ * 结构对齐长文解读（总论 + 分节长文），但内容严格限定在历法与文化域：
+ * 每节先给结论式概述，再给两段说明；全部只引用 buildFacts 交来的真值。
+ * 段落用 '\n\n' 分隔，渲染侧 white-space: pre-line 负责换行。
  */
 export function ruleBasedInsight(facts) {
   if (!facts) return null;
   const f = facts;
   const sections = [];
+  const pillars = (f.pillars || []).filter((p) => p && p.gan_zhi);
+  const term = f.solarTerm || {};
+  const hasSolar = !!(f.solarTime && f.solarTime.corrected);
 
-  // 1. 节气与历法坐标
+  // 1. 总论：把三套计时系统叠在同一个时刻上的坐标说明（不含任何插值，恒可输出）
+  sections.push({
+    id: 's0',
+    title: '总论',
+    contentType: 'CULTURAL_CONTEXT',
+    content:
+      '这份档案记录的是一组已经算好的客观坐标：四柱干支、前后节气、农历日期、五行字面计数，以及按出生地经度与均时差校正后的太阳时刻。它们并不出自同一种计时系统——公历以回归年定年月日，农历以朔望月定初一、以节气置闰，干支历以立春与十二「节」为界纪年月日时；三套系统各自记数，叠加起来就是这一时刻在历法中的位置。\n\n'
+      + '下面各节逐项展开这些坐标，说明每一项出自哪套系统、如何确定、在传统文化中承担什么角色。全部内容为历法与文化背景的陈述，只引用上方已经算好的数值，不补算、不替换，也不对个人作任何推断。',
+    evidenceIds: ['e_pillars', 'e_term'],
+  });
+
+  // 2. 节气坐标
   const termBits = [];
-  if (f.solarTerm && f.solarTerm.prev) termBits.push(`上一个节气是${f.solarTerm.prev}`);
-  if (f.solarTerm && f.solarTerm.next) termBits.push(`下一个节气是${f.solarTerm.next}`);
+  if (term.prev) termBits.push('上一个节气是' + term.prev);
+  if (term.next) termBits.push('下一个节气是' + term.next);
   sections.push({
     id: 's1',
     title: '节气坐标',
     contentType: 'FACT',
     content: termBits.length
-      ? termBits.join('，') + '。节气在传统历法中是太阳周年运动的刻度，本档案的月柱以「节」而非公历月为分界。'
+      ? termBits.join('，') + '。节气按太阳在黄道上的视位置划分：自春分点起，太阳每运行 15 度为一个节气，二十四节气正好合 360 度。因此节气落在公历上的日期几乎固定，前后不过一两天，而农历日期会随朔望月逐年游移。\n\n'
+        + '干支历以十二「节」（立春、惊蛰、清明、立夏、芒种、小暑、立秋、白露、寒露、立冬、大雪、小寒）划分月柱区间，十二「中气」（雨水、春分、谷雨、小满、夏至、大暑、处暑、秋分、霜降、小雪、冬至、大寒）排在两节之间、不换月。本档案的月柱由上一个「节」所在的区间定出，而不是按公历月份的 1 号定出。'
       : '无法判定：缺少节气数据。',
     evidenceIds: ['e_term'],
   });
 
-  // 2. 干支体系
-  const pillars = (f.pillars || []).filter((p) => p && p.gan_zhi);
+  // 3. 农历日期（无事实时整节不产出，不写占位串）
+  if (f.lunar) {
+    sections.push({
+      id: 's5',
+      title: '农历日期',
+      contentType: 'FACT',
+      content:
+        '本档案的农历日期为 ' + f.lunar + '。农历是阴阳合历：一个月以「朔」（新月隐没不见之日）为初一，月长 29 或 30 天，平均 29.53 天与一次朔望月相合；一年十二个月约 354 天，比回归年少约 11 天，所以要靠置闰把月份重新对回四季。\n\n'
+        + '农历日期由朔日时刻与日界推算：若朔发生在临近子夜的时刻，不同地区对「初一」的判定可能相差一天，故农历日期允许有一天的出入（若页面在该行标注了「近似」，即指这一原因）。',
+      evidenceIds: ['e_lunar'],
+    });
+  }
+
+  // 4. 四柱干支
+  const hourPillar = (f.pillars || []).find((p) => p && p.label === '时');
+  const hourMissing = !!(hourPillar && !hourPillar.gan_zhi);
   sections.push({
     id: 's2',
-    title: '干支纪时',
+    title: '四柱干支',
     contentType: 'CULTURAL_CONTEXT',
     content: pillars.length
-      ? `四柱依次为 ${pillars.map((p) => `${p.label}柱${p.gan_zhi}`).join('、')}。天干十位循环纪年、纪月、纪日，地支十二位对应十二时辰与十二地支方位，这是中国古代记录时间的一套符号系统。`
+      ? '四柱依次为 ' + pillars.map((p) => p.label + '柱' + p.gan_zhi).join('、')
+        + (hourMissing ? '（时柱因未提供出生时间而未列）' : '')
+        + '。每一柱由一个天干与一个地支组成：天干十位（甲乙丙丁戊己庚辛壬癸），地支十二位（子丑寅卯辰巳午未申酉戌亥），阴阳相间、两两相配，六十年循环一周。\n\n'
+        + '四个层级各有各的起点：年柱以立春为界，月柱以十二「节」为界，日柱是连续不间断的纪日序列，时柱由日干按五鼠遁推得。四柱因此是干支历对年、月、日、时四个层级的并列标注，本档案原样列出，不对其中任何一位作进一步解读。'
       : '无法判定：缺少干支数据。',
     evidenceIds: ['e_pillars'],
   });
 
-  // 3. 五行字面计数（严守「计数 ≠ 旺衰」）
-  //    注意：文案避免出现「吉凶」二字本身——即便是否定句式，
+  // 5. 十二时辰与地支（仅在时柱地支已知时产出）
+  if (hourPillar && hourPillar.gan_zhi) {
+    const zhi = hourPillar.gan_zhi.charAt(1);
+    const c = ZHI_CULTURE[zhi];
+    if (c) {
+      sections.push({
+        id: 's6',
+        title: '十二时辰与地支',
+        contentType: 'CULTURAL_CONTEXT',
+        content:
+          '本档案时柱地支为' + zhi + '，对应的时辰是' + zhi + '时（' + c.hours + '），方位属' + c.dir + '，在十二月建中配' + c.month + '。\n\n'
+          + '十二时辰把一天均分为十二段，每段两小时，以地支命名依次循环：子时 23:00–01:00、丑时 01:00–03:00，如此到亥时 21:00–23:00。同一套地支还被用来标方位（子北、午南、卯东、酉西）与标月份（自寅起为正月），时间、方位与月份因此共用一套编号方式。',
+        evidenceIds: ['e_pillars'],
+      });
+    }
+  }
+
+  // 6. 五行字面计数（严守「计数 ≠ 强弱」）
+  //    文案避免出现「吉凶」二字本身——即便是否定句式，
   //    微信内容安全审核按关键词命中，会被判为违规。统一改为「不作强弱评判」。
   sections.push({
     id: 's3',
     title: '五行字面分布',
     contentType: 'FACT',
-    content: `按天干地支逐一归属，本档案的字面计数为 ${countTally(f)}。这只是符号出现次数的统计，本档案不对其作任何强弱评判。`,
+    content:
+      '按天干地支逐一归属，本档案的字面计数为 ' + countTally(f) + '。五行（木、火、土、金、水）是中国传统里对事物分类的一套符号，先秦文献已见其说；在干支体系中，十干与十二支各有固定的五行归属，这里统计的是它们在四柱里出现的次数。\n\n'
+      + '这只是符号出现次数的统计，本档案不对其作任何强弱评判。取法不同，计数也会不同：只计天干与兼计地支并不一致，故本节数值只在本档案所用的这一套归属规则下成立，不与其他算法比较。',
     evidenceIds: ['e_wuxing'],
   });
 
-  // 4. 太阳时间校正
-  if (f.solarTime && f.solarTime.corrected) {
+  // 7. 太阳时间校正
+  if (hasSolar) {
     sections.push({
       id: 's4',
-      title: '太阳时间',
+      title: '太阳时间与钟表时间',
       contentType: 'FACT',
-      content: `按出生地经度与均时差换算，出生时刻的钟表时间与真太阳时相差 ${f.solarTime.corrected}${f.solarTime.day_changed ? '，并因此改变了历日归属' : ''}。传统排盘采用真太阳时，故与钟表时间可能不同。`,
+      content:
+        '按出生地经度与均时差换算，钟表时间与真太阳时相差 ' + f.solarTime.corrected
+        + (f.solarTime.day_changed ? '，并因此改变了历日归属，日柱按校正后的时刻定出' : '')
+        + '。差额来自两处：一是经度，钟表时间以时区中央经线为准，东八区取 120 度，出生地每偏东 1 度，地方平时约早 4 分钟；二是均时差，太阳视运动并不匀速，真太阳日长度全年约有正负 16 分钟的起伏，使真太阳时与钟表时间始终存在一个小差额。\n\n'
+        + '传统历法以太阳位置定日，因此在接近换日的时刻，校正前后的历日可能不同；本档案的历日与日柱均按校正后的时刻确定。',
       evidenceIds: ['e_solar'],
     });
   }
@@ -158,7 +245,7 @@ export function ruleBasedInsight(facts) {
     model: 'rule-based-fallback',
     promptVer: PROMPT_VER,
     sections,
-    limitations: ['仅解释客观历法事实', '不含预测、判定或建议', '云端 AI 未启用时使用本地规则文本'],
+    limitations: ['仅解释客观历法事实', '不作任何判断、建议或未来推断', '云端 AI 未启用时使用本地规则文本'],
     fallback: true,
   };
 }

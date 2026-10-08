@@ -23,7 +23,7 @@
   color: #fff;
   border-radius: 16rpx;
   font-size: 28rpx;
-  letter-spacing: 3rpx;
+  text-align: center;
 }
 .btn-back::after { border: none; }
 

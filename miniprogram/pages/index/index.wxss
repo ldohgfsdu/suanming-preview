@@ -4,12 +4,12 @@
   padding: 14rpx 8rpx 8rpx;
   text-align: center;
 }
+/* 居中文本不写 letter-spacing：末字后也留白，居中整体左偏 n*ls/2 */
 .hero-sub {
   color: var(--muted);
   font-size: 24rpx;
-  letter-spacing: 4rpx;
 }
-.hero-date { margin-top: 22rpx; color: var(--accent); font-size: 24rpx; letter-spacing: 2rpx; }
+.hero-date { margin-top: 22rpx; color: var(--accent); font-size: 24rpx; }
 .today-date { margin-bottom: 16rpx; font-size: 26rpx; color: var(--muted); letter-spacing: 2rpx; }
 
 .card {
@@ -37,12 +37,15 @@
   margin-top: 28rpx;
   height: 88rpx;
   line-height: 88rpx;
+  /* 微信 button UA 的 padding: 8px 24px + border-box 会把文字压低 8px，必须置零垂直向 */
+  padding-top: 0;
+  padding-bottom: 0;
   background: var(--card);
   color: var(--accent);
   border: 1rpx solid var(--accent);
   border-radius: 16rpx;
   font-size: 28rpx;
-  letter-spacing: 2rpx;
+  text-align: center;
 }
 .btn-save::after { border: none; }
 .today-ganzhi {
@@ -153,7 +156,7 @@
 }
 .ph { color: var(--muted); font-size: 26rpx; }
 
-.adv-link { margin: 20rpx 0 4rpx; color: var(--accent); font-size: 24rpx; text-align: center; letter-spacing: 1rpx; }
+.adv-link { margin: 20rpx 0 4rpx; color: var(--accent); font-size: 24rpx; text-align: center; }
 
 .btn {
   display: flex;
@@ -169,7 +172,7 @@
   border-radius: 18rpx;
   font-size: 30rpx;
   font-weight: 600;
-  letter-spacing: 6rpx;
+  text-align: center;
   box-shadow: 0 8rpx 22rpx rgba(154, 107, 79, 0.28);
   transition: all 0.15s ease;
 }
@@ -181,7 +184,7 @@
   box-shadow: none;
   opacity: 1;
 }
-.btn-sub { margin-top: 16rpx; text-align: center; color: var(--muted); font-size: 22rpx; letter-spacing: 1rpx; }
+.btn-sub { margin-top: 16rpx; text-align: center; color: var(--muted); font-size: 22rpx; }
 
 /* ---------- 生成过渡 ---------- */
 .gen-overlay {
@@ -215,7 +218,7 @@
 
 .pillars { display: flex; justify-content: space-around; padding: 10rpx 0 24rpx; }
 .pillar { text-align: center; flex: 1; }
-.pillar-label { color: var(--muted); font-size: 22rpx; margin-bottom: 10rpx; letter-spacing: 2rpx; }
+.pillar-label { color: var(--muted); font-size: 22rpx; margin-bottom: 10rpx; }
 .pillar-ganzhi { font-size: 44rpx; font-weight: 600; line-height: 1.25; }
 .pillar-elem { margin-top: 10rpx; font-size: 22rpx; color: var(--accent); }
 
@@ -274,7 +277,6 @@
   text-align: center;
   color: var(--muted);
   font-size: 21rpx;
-  letter-spacing: 2rpx;
 }
 
 /* ---------- 微交互：结果淡入 / 按键反馈 ---------- */
@@ -292,28 +294,13 @@
 .pillar { transition: transform 0.2s ease; }
 
 
-/* ---------------- 出生时刻：时辰 / 精确到分双模式 ---------------- */
+/* ---------------- 出生时间：直接 时:分（十二时辰仅作推导展示） ---------------- */
 .time-row { align-items: center; }
 
-.time-mode {
-  display: flex;
+.time-switch {
   margin-left: auto;
-  padding: 4rpx;
-  background: var(--tint);
-  border-radius: 12rpx;
-}
-.time-mode-item {
-  padding: 10rpx 26rpx;
-  border-radius: 10rpx;
-  font-size: 23rpx;
-  color: var(--muted);
-  transition: background .18s, color .18s;
-}
-.time-mode-item.is-on {
-  background: var(--card);
-  color: var(--accent);
-  font-weight: 500;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+  transform: scale(0.78);
+  transform-origin: right center;
 }
 
 .label-sub {
@@ -327,6 +314,10 @@
   letter-spacing: 1rpx;
   min-width: 160rpx;
   text-align: right;
+}
+.picker-value.is-off {
+  color: var(--muted);
+  opacity: 0.75;
 }
 
 .time-hint {

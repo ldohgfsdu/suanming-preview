@@ -59,7 +59,6 @@
     <view class="mb-track"><view class="mb-fill" style="width:{{r.moonLit.litPct}}%"></view></view>
     <text class="mb-pct">{{r.moonLit.filling}} · 照亮约 {{r.moonLit.litPct}}%</text>
   </view>
-  <view class="kv"><text class="k">真太阳时修正</text><text class="v">{{r.trueSolar}}</text></view>
 
   <view class="divider"></view>
 
@@ -95,13 +94,14 @@
     <view class="insight-item">
       <view class="insight-item-content">解读生成暂不可用。上方历法档案由本地确定性引擎计算，不受此影响，可正常查看与使用。</view>
     </view>
+    <button class="btn-insight insight-retry" bindtap="onGenerateInsight">重新生成解读</button>
   </view>
 
   <view class="note">本档案由真实天文历法计算得出：结果均源自真太阳时、天文节气等历法数据，仅供传统文化研究与娱乐参考。</view>
 
   <button class="btn-save" bindtap="onSaveCard">保存档案卡片</button>
 
-  <view class="back-hint" bindtap="goBack">← 返回首页修改参数</view>
+  <view class="back-hint" bindtap="goBackHome">← 返回首页修改参数</view>
 
   <!-- 分享卡片画布（离屏） -->
   <canvas class="share-canvas" canvas-id="shareCard" style="width:600px;height:760px;"></canvas>

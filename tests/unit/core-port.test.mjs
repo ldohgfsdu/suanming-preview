@@ -184,10 +184,17 @@ test('ZI3 晚子时五鼠遁：时干按次日日干起（非当日）', () => {
   assert.equal(ziStem, nextPillar.index % 10, '早子时口径应直接用日柱日干');
 });
 
-test('ZI4 双口径下 23 点出生的日柱确实不同', () => {
-  const a = computeArchive(1990, 6, 15, 23, 114.3, DayBoundaryRule.CHANGE_AT_ZI);
-  const b = computeArchive(1990, 6, 15, 23, 114.3, DayBoundaryRule.CHANGE_AT_MIDNIGHT);
-  assert.notEqual(a.four.day.ganz, b.four.day.ganz, '两种口径应给出不同日柱');
+test('ZI4 双口径日柱是否分叉，取决于太阳钟是否已进晚子时', () => {
+  // 墙钟 23:00 @114.3°E → 太阳钟 22:37（经度差把钟拨慢），尚未跨 23:00 日界，
+  // 两口径都取当日 → 日柱相同（双时间轴纪律：日界判据必须用太阳钟，不能用墙钟）。
+  const a0 = computeArchive(1990, 6, 15, 23, 114.3, DayBoundaryRule.CHANGE_AT_ZI);
+  const b0 = computeArchive(1990, 6, 15, 23, 114.3, DayBoundaryRule.CHANGE_AT_MIDNIGHT);
+  assert.equal(a0.four.day.ganz, b0.four.day.ganz, '太阳钟未进晚子时 → 两口径同日柱');
+
+  // 墙钟 23:00 @125°E → 太阳钟 23:20，已过日界 → 两口径分叉。
+  const a = computeArchive(1990, 6, 15, 23, 125, DayBoundaryRule.CHANGE_AT_ZI);
+  const b = computeArchive(1990, 6, 15, 23, 125, DayBoundaryRule.CHANGE_AT_MIDNIGHT);
+  assert.notEqual(a.four.day.ganz, b.four.day.ganz, '太阳钟已进晚子时 → 两口径应给出不同日柱');
 });
 
 test('ZI5 默认口径为早子时（向后兼容）', () => {

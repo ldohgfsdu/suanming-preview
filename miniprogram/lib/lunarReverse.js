@@ -16,7 +16,7 @@
 
 'use strict';
 
-import { gregorianToJde, jdeToGregorian } from './engine.js';
+import { jdeToGregorian } from './engine.js';
 import { LUNAR_TABLE, LUNAR_RANGE } from './lunar-table.js';
 
 /** 中国农历月名 with 闰月 —— 与 lunar.js 一致 */
@@ -66,7 +66,6 @@ export function lunarToSolar(year, month, leap, day) {
  */
 export function lunarMonthsOfYear(year) {
   const out = [];
-  let seenBase = new Set();
   for (let i = 0; i < LUNAR_TABLE.length; i++) {
     const r = LUNAR_TABLE[i];
     if (r[0] !== year) continue;

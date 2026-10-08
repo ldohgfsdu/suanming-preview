@@ -1,6 +1,6 @@
 /* pages/result/result.wxss — 独立「历法档案」结果页 */
 .page {
-  padding: 40rpx 32rpx 180rpx;
+  padding: 32rpx 32rpx 72rpx;
   max-width: 720rpx;
   margin: 0 auto;
 }
@@ -12,27 +12,27 @@
   border: 1rpx solid var(--line); border-radius: 20rpx;
   padding: 4rpx 16rpx;
 }
-.result-sub { color: var(--muted); font-size: 24rpx; margin: 8rpx 0 30rpx; letter-spacing: 1rpx; }
+.result-sub { color: var(--muted); font-size: 24rpx; margin: 6rpx 0 24rpx; letter-spacing: 1rpx; }
 .result-meta { color: var(--muted); font-size: 28rpx; margin-bottom: 30rpx; }
 
 .pillars {
   display: flex; justify-content: space-between;
-  padding: 22rpx 10rpx 26rpx;
+  padding: 20rpx 10rpx 22rpx;
   background: var(--card); border: 1rpx solid var(--line); border-radius: 24rpx;
-  margin-bottom: 16rpx;
+  margin-bottom: 12rpx;
 }
 .pillar { text-align: center; flex: 1; min-width: 0; }
 .pillar-ganzhi { font-size: 42rpx; font-weight: 700; line-height: 1.25; color: var(--ink); }
 .pillar-meta {
   display: flex; justify-content: center; align-items: baseline;
-  gap: 10rpx; margin-top: 12rpx;
+  gap: 10rpx; margin-top: 10rpx;
 }
 .pillar-label { font-size: 20rpx; color: var(--muted); }
 .pillar-elem { font-size: 20rpx; color: var(--accent); }
 .pillar.is-unknown .pillar-ganzhi { color: var(--muted); font-weight: 400; }
 .pillar.is-unknown .pillar-elem { color: var(--muted); }
 .hour-unknown-hint {
-  margin: -2rpx 0 16rpx;
+  margin: -2rpx 0 12rpx;
   font-size: 22rpx;
   color: var(--muted);
   text-align: center;
@@ -40,26 +40,27 @@
 .tally-row.is-empty .tally-fill { opacity: 0.25; }
 .tally-row.is-empty .tally-n { color: var(--muted); font-weight: 400; }
 
-.kv-place { align-items: baseline; }
+/* kv 行：键值垂直居中（地点为两行时键也居中，避免顶对齐） */
+.kv-place { align-items: center; }
 .place-block { display: flex; flex-direction: column; align-items: flex-end; }
-.place-name { font-size: 28rpx; color: var(--ink); }
-.place-coord { margin-top: 6rpx; font-size: 22rpx; color: var(--muted); }
+.place-name { font-size: 28rpx; color: var(--ink); line-height: 1.35; }
+.place-coord { margin-top: 2rpx; font-size: 22rpx; color: var(--muted); line-height: 1.35; }
 
-.kv { display: flex; align-items: baseline; justify-content: space-between; padding: 14rpx 0; border-bottom: 1rpx solid var(--line); }
+.kv { display: flex; align-items: center; justify-content: space-between; padding: 11rpx 0; border-bottom: 1rpx solid var(--line); }
 .kv .approx { font-size: 20rpx; color: var(--muted); margin-left: 8rpx; }
 .kv-tag { display: inline-block; margin-left: 8rpx; padding: 1rpx 10rpx; border-radius: 6rpx; font-size: 18rpx; color: var(--accent); background: rgba(18,161,115,0.12); }
-.cross-day-banner { margin-top: 18rpx; padding: 14rpx 20rpx; border-radius: 12rpx; font-size: 24rpx; color: var(--accent); background: rgba(18,161,115,0.1); }
+.cross-day-banner { margin-top: 14rpx; padding: 12rpx 18rpx; border-radius: 12rpx; font-size: 24rpx; color: var(--accent); background: rgba(18,161,115,0.1); line-height: 1.5; }
 .k { color: var(--muted); font-size: 25rpx; flex-shrink: 0; margin-right: 24rpx; }
 .v { font-size: 28rpx; text-align: right; flex: 1; }
 .kv-life { border-bottom-color: transparent; }
 .kv-life .v-life { color: var(--accent); font-weight: 600; font-size: 30rpx; letter-spacing: 1rpx; }
 
-.divider { height: 1rpx; background: var(--line); margin: 26rpx 0; }
-.section-title { font-size: 26rpx; color: var(--muted); margin: 4rpx 0 16rpx; letter-spacing: 2rpx; }
-.section-title .section-inline { font-weight: 400; color: var(--ink); letter-spacing: 1rpx; font-size: 28rpx; }
+.divider { height: 1rpx; background: var(--line); margin: 18rpx 0; }
+.section-title { font-size: 26rpx; color: var(--muted); margin: 4rpx 0 12rpx; letter-spacing: 2rpx; }
+.section-title .section-inline { font-weight: 400; color: var(--ink); letter-spacing: 1rpx; font-size: 26rpx; vertical-align: middle; }
 
 .tally { display: flex; flex-direction: column; }
-.tally-row { display: flex; align-items: center; margin: 10rpx 0; }
+.tally-row { display: flex; align-items: center; margin: 8rpx 0; }
 .tally-name { width: 90rpx; font-size: 26rpx; flex-shrink: 0; }
 .tally-track { flex: 1; height: 18rpx; border-radius: 9rpx; background: var(--tint); overflow: hidden; }
 .tally-fill { height: 100%; border-radius: 9rpx; background: var(--accent); transition: width 0.5s ease; }
@@ -68,54 +69,62 @@
 
 .mb-bar {
   display: flex; align-items: center;
-  padding: 18rpx 0 6rpx; gap: 16rpx;
+  padding: 14rpx 0 4rpx; gap: 16rpx;
 }
 .mb-track { flex: 1; height: 16rpx; border-radius: 8rpx; background: var(--tint); overflow: hidden; }
 .mb-fill { height: 100%; border-radius: 8rpx; background: linear-gradient(90deg, var(--accent), var(--btn)); transition: width 0.5s ease; }
 .mb-pct { font-size: 22rpx; color: var(--muted); flex-shrink: 0; }
 
-.note { margin-top: 30rpx; color: var(--muted); font-size: 23rpx; line-height: 1.7; }
+.note { margin-top: 24rpx; color: var(--muted); font-size: 23rpx; line-height: 1.7; }
 
 .btn-save {
-  margin-top: 36rpx;
-  height: 92rpx;
-  line-height: 92rpx;
+  display: block;
+  margin-top: 26rpx;
+  height: 86rpx;
+  line-height: 86rpx;
+  /* 微信 button UA 注入 padding: 8px 24px + border-box：不置零垂直 padding，
+     86rpx 的行盒会从内容区顶端下排，文字整体低 8px（实测 dy=+7.75px）。 */
+  padding-top: 0;
+  padding-bottom: 0;
   background: var(--accent);
   color: #fff;
   font-weight: 600;
   border: none;
   border-radius: 18rpx;
   font-size: 29rpx;
-  letter-spacing: 3rpx;
+  text-align: center;
   box-shadow: 0 8rpx 22rpx rgba(154, 107, 79, 0.26);
 }
 .btn-save::after { border: none; }
 .btn-save:active { opacity: 0.92; }
 
 .back-hint {
-  margin-top: 26rpx;
+  margin-top: 14rpx;
   text-align: center;
   color: var(--muted);
   font-size: 24rpx;
-  letter-spacing: 1rpx;
-  padding: 12rpx;
+  padding: 8rpx;
 }
 
 /* 解读生成入口（显式触发） */
-.insight-idle { padding: 8rpx 0 4rpx; }
+.insight-idle { padding: 4rpx 0; }
 .btn-insight {
+  display: block;
   height: 84rpx;
   line-height: 84rpx;
+  padding-top: 0;
+  padding-bottom: 0;
   background: transparent;
   color: var(--accent);
   border: 2rpx solid var(--accent);
   border-radius: 16rpx;
   font-size: 28rpx;
   font-weight: 500;
-  letter-spacing: 2rpx;
+  text-align: center;
 }
 .btn-insight::after { border: none; }
 .btn-insight:active { opacity: 0.7; }
+.insight-retry { margin-top: 16rpx; }
 .insight-hint { margin-top: 14rpx; color: var(--muted); font-size: 22rpx; line-height: 1.6; }
 
 .share-canvas { position: fixed; left: -9999px; top: 0; pointer-events: none; }
@@ -154,6 +163,8 @@
   color: var(--ink);
   font-size: 25rpx;
   line-height: 1.78;
+  /* 本地规则与 AI 正文用 \n\n 分段；不保留换行会把长文挤成一坨 */
+  white-space: pre-line;
 }
 
 .insight-limitation {

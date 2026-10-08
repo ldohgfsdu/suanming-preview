@@ -1,5 +1,4 @@
 import { computeArchive, ELEMENT_NAME } from '../miniprogram/lib/archive.js';
-function pad(n){return String(n).padStart(2,'0');}
 function fmtUTC(utc){ if(!utc) return '—'; const s=utc.slice(0,16).replace('T',' '); return s+' (UTC)'; }
 // 完整复刻 index.js onGenerate 的字段访问链，2003-01-30 出生 13:50
 function simulate(Y,M,D,H,lon){

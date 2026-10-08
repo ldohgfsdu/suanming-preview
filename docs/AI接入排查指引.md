@@ -1,4 +1,4 @@
-# AI 接不上 · 排查指引
+﻿# AI 接不上 · 排查指引
 
 > 2026-10-06 更新　|　我改了调用方式，现在按顺序验证
 
@@ -95,7 +95,7 @@ await cloud.openapi.ai.generateText({
   "action": "interpret",
   "docHash": "test-doc-hash-0001",
   "schemaVersion": "archive-document-v1",
-  "promptVer": "insight-prompt-v1",
+  "promptVer": "insight-prompt-v2",
   "locale": "zh-CN",
   "facts": {
     "pillars": [

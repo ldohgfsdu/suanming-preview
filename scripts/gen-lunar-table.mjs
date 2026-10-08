@@ -14,7 +14,6 @@
 import { newMoonJde } from '../miniprogram/lib/archive.js';
 import { gregorianToJde, jdeToGregorian, termJde } from '../miniprogram/lib/engine.js';
 
-const B8 = 8 / 24; // Beijing +8h
 // 中气 ord(1,3,...,23) -> 农历月号（正月=1）：
 //   大寒(1)->12, 雨水(3)->1, 春分(5)->2, 谷雨(7)->3, 小满(9)->4, 夏至(11)->5,
 //   大暑(13)->6, 处暑(15)->7, 秋分(17)->8, 霜降(19)->9, 小雪(21)->10, 冬至(23)->11

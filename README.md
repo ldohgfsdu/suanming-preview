@@ -6,6 +6,8 @@
 
 本仓库是 Suanming Preview 的**工程实现仓库**，承载 `miniprogram / cloudfunctions / engine / insight / shared` 五目录与 CI。
 
+> 迁移状态（2026-10-07）：五目录为目标架构，尚未全部落地 —— `engine/` 现仅 `lib/types.ts`，`insight/` 为空目录（知识源、prompt、Guard 仍在 `miniprogram/lib/insight.js` 与 `cloudfunctions/insight/`），`miniprogram/lib/` 内 14 个历法模块为当前唯一实现。
+
 ## 目录职责（Handbook §3 未来逻辑目录，依赖方向单向）
 
 ```
@@ -54,4 +56,5 @@ npm run test:all
 - 2026-09-11：终验收官——全站深色模式（darkmode + theme.json + CSS 变量，一套变量管明暗）；修复季/节气页历来缺 terms.wxss 与「12/24 节气」截断，补全为 24 节气分钟级；今日/节气/关于页支持微信分享（含 ?year 深链）；QA 全绿（64/64 单测、lunar 黄金 20/20、禁用词 0 实质命中、主包 226KB<2MB、5 页 wxml 平衡）。
 - 2026-09-15：天文精度收官——`solarlon.js` 升级 VSOP87+岁差+章动+光行差 高精度视黄经（误差 ≤~0.2min）；真太阳时确立「单一时间事实源」；农历月表落位（朔±1 诚实标记）；合规口径统一。门禁实测 **107/107**（TS 28 + mjs 79）。
 - 2026-09-30：全量纵深审查定稿 `governance/COMPREHENSIVE_REVIEW_V1.md`；门禁脚本跨 shell 加固；HEAD `8d86f0f`（63 commits）。
+- 2026-10-07：契约与体验修复——年/月柱与节气 bracket 改按**绝对出生瞬间**（北京墙钟）判定，纠正旧实现晚 20 小时造成的立春/节边界错判；子时日界判据统一走**地方太阳钟**；精确到分的 23:01–23:59 恢复真太阳时校正；农历文案日名改用 `DAY_CN`（原输出「正月正 / 正月13」）；facts 契约与内容安全文案收口（`—`、`未提供地点`、`排盘`、`预测` 不再进入事实层与正文）；修复结果页返回按钮错绑、历史空态按钮无响应、节气年份选择超出 `wx.showActionSheet` 6 项上限、分享卡越界与长文本溢出；AI 超时按 PRD 冻结红线改为 **8s 降级**（晚到的云端结果补写缓存）；时钟定时器改 onHide 停止；`eslint` 补齐 `miniprogram/` 覆盖。门禁实测 **145/145**（TS 28 + mjs 117），71 commits。
 

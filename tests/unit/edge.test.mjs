@@ -30,9 +30,10 @@ test('用户输入越界仍抛错（1899 / 2101）', () => {
 });
 
 // ---------- 立春换年柱 ----------
-test('立春前 2/3 → 癸卯；立春后 2/4 → 甲辰（2024）', () => {
+test('立春前 2/3 → 癸卯；立春日 16:26 后 → 甲辰（2024）', () => {
   assert.strictEqual(computeArchive(2024, 2, 3, 12, null).four.year.ganz, '癸卯');
-  assert.strictEqual(computeArchive(2024, 2, 4, 12, null).four.year.ganz, '甲辰');
+  assert.strictEqual(computeArchive(2024, 2, 4, 12, null).four.year.ganz, '癸卯');
+  assert.strictEqual(computeArchive(2024, 2, 4, 17, null).four.year.ganz, '甲辰');
 });
 
 // ---------- 子时换日规则（已移植 Core 的 DayBoundaryRule，默认早子时换日） ----------
@@ -50,6 +51,20 @@ test('23:59 同属早子时，与 23:00 一致', () => {
   const b = computeArchive(2023, 5, 4, 23.9, null);
   assert.strictEqual(a.four.day.ganz, b.four.day.ganz);
   assert.strictEqual(a.four.hour.ganz, b.four.hour.ganz);
+});
+test('小数小时 23:01–23:59 也进入真太阳时校正（判据 hour<24）', () => {
+  // 回归：旧判据 hour<=23 会把 23:30、23:59 这类精确到分的输入静默挡在校正之外
+  // （canonHour 为 null），同一人换种输入方式就得到两套四柱。
+  const a = computeArchive(2023, 5, 4, 23, 116.4);
+  const b = computeArchive(2023, 5, 4, 23.5, 116.4);
+  assert.strictEqual(a.trueSolar.canonHour != null, true, '23:00 一直会进入校正（对照）');
+  assert.strictEqual(b.trueSolar.canonHour != null, true, '23:30 必须也进入真太阳时校正');
+  assert.ok(!b.trueSolar.degraded);
+  // 北京 116.4°E 把钟拨慢约 11 分钟：墙钟 23:00 → 太阳钟 22:49（未跨日界）；
+  // 墙钟 23:30 → 太阳钟 23:19（跨入晚子时 → 日柱进次日）。日界判据走太阳钟。
+  assert.strictEqual(a.four.day.ganz, '壬戌', '太阳钟 22:49 未跨日界');
+  assert.strictEqual(b.four.day.ganz, '癸亥', '太阳钟 23:19 已跨日界');
+  assert.strictEqual(b.four.hour.ganz, '壬子', '时干按次日日干癸起遁');
 });
 test('00:30 时柱庚子（当日壬戌日五鼠遁），日柱仍为当日', () => {
   const a = computeArchive(2023, 5, 4, 0, null);

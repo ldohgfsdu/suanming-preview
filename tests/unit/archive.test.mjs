@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  computeArchive, monthPillar, hourPillar, tally, lunarAge, newMoonJde, lunarPhase, trueSolarToLocal,
+  computeArchive, monthPillar, hourPillar, tally, trueSolarToLocal,
 } from '../../miniprogram/lib/archive.js';
 import { dayPillar, gregorianToJde, yearPillar } from '../../miniprogram/lib/engine.js';
 
@@ -89,16 +89,28 @@ test('UTC8 乌鲁木齐 午时 真太阳时跨时辰→巳时，日不变', () =
   assert.strictEqual(f.four.hour.zhi, '巳');
 });
 
-test('北京 子时(00) 真太阳时跨零点→前一日，日柱跨日更新、日历日与输入分开', () => {
+test('北京 子时(00) 真太阳时跨零点：日界按太阳钟重判，日历日与输入分开', () => {
+  // ① 墙钟 00:00 @116.4°E → 太阳钟 6-14 23:46。太阳历日是 6-14，但 23:46 已过晚子时
+  //    日界，按双时间轴纪律（日界走太阳钟 + CHANGE_AT_ZI）日柱取次日 6-15，
+  //    与墙钟 00:00 同判——真太阳时在这里不改变日柱，这正是口径一致的表现。
   const f = computeArchive(2024, 6, 15, 0, 116.4);
   assert.strictEqual(f.dayShift, -1);
   assert.strictEqual(f.trueSolar.dayChanged, true);
-  assert.strictEqual(f.solar.d, 14); // 真时在 6-14（前一日）
+  assert.strictEqual(f.trueSolar.canonDate.d, 14); // 太阳历日 = 6-14
   assert.strictEqual(f.solarInput.d, 15);
-  // 日柱应按修正后的 6-14 计算，而非输入日
+  const d15 = dayPillar(gregorianToJde(2024, 6, 15));
+  assert.strictEqual(f.four.day.ganz, d15.gan + d15.zhi, '太阳钟 23:46 属晚子时 → 次日');
+  assert.strictEqual(f.solar.d, 15); // 排盘历日（含日界修正）
+
+  // ② 墙钟 00:00 @90°E → 太阳钟 6-14 21:59：真太阳时真跨到前一日且未进晚子时，
+  //    日柱与排盘历日都跟太阳历日走，与输入日 6-15 分开。
+  const g = computeArchive(2024, 6, 15, 0, 90);
+  assert.strictEqual(g.dayShift, -1);
+  assert.strictEqual(g.trueSolar.canonDate.d, 14);
+  assert.strictEqual(g.solarInput.d, 15);
   const d14 = dayPillar(gregorianToJde(2024, 6, 14));
-  const want = d14.gan + d14.zhi;
-  assert.strictEqual(f.four.day.ganz, want);
+  assert.strictEqual(g.four.day.ganz, d14.gan + d14.zhi, '未进晚子时 → 日柱跟太阳历日');
+  assert.strictEqual(g.solar.d, 14);
 });
 
 test('无经度-无真时修正：日柱仍用输入日', () => {
@@ -120,19 +132,21 @@ test('非边界日期：年/月柱稳定且与地点无关（2020-06-15）', () 
   }
 });
 
-test('年/月柱由绝对出生瞬间重判（跨立春：2024-02-04 邑）', () => {
-  // absolute birth instant = gregorianToJde(y,m,d)+(h-12)/24（与地点无关的太阳黄经）
-  const abs = (y, m, d, h) => gregorianToJde(y, m, d) + (h - 12) / 24;
-  for (const h of [0, 12]) {
+test('年/月柱由绝对出生瞬间重判（跨立春：2024-02-04）', () => {
+  // absolute birth instant = 北京墙钟时刻 = gregorianToJde(y,m,d)+(h-20)/24
+  // （gregorianToJde 返回历日正午 UT＝北京 20:00，故须减 20 小时；与地点无关的太阳黄经）
+  const abs = (y, m, d, h) => gregorianToJde(y, m, d) + (h - 20) / 24;
+  for (const h of [0, 12, 17]) {
     const f = computeArchive(2024, 2, 4, h, 87.8);
     const yp = yearPillar(abs(2024, 2, 4, h));
     const mp = monthPillar(abs(2024, 2, 4, h), yp.ganzhiYear);
     assert.strictEqual(f.four.year.ganz, yp.gan + yp.zhi);
     assert.strictEqual(f.four.month.ganz, mp.ganzhi);
   }
-  // 立春前生→癸卯，立春后→甲辰
+  // 立春 2024-02-04 16:26:53（北京）：此前 → 癸卯，此后 → 甲辰
   assert.strictEqual(computeArchive(2024, 2, 4, 0, 87.8).four.year.ganz, '癸卯');
-  assert.strictEqual(computeArchive(2024, 2, 4, 12, 87.8).four.year.ganz, '甲辰');
+  assert.strictEqual(computeArchive(2024, 2, 4, 12, 87.8).four.year.ganz, '癸卯');
+  assert.strictEqual(computeArchive(2024, 2, 4, 17, 87.8).four.year.ganz, '甲辰');
 });
 
 test('修正量≈0 时四柱与原始一致（2024-04-14 经度120）', () => {

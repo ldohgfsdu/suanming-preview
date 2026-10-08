@@ -28,7 +28,6 @@ export const MAX_YEAR = 2100;
 const TERM_REF_MONTH = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12];
 const TERM_REF_DAY = [5, 20, 4, 19, 5, 20, 5, 20, 5, 21, 5, 21, 7, 22, 7, 23, 7, 23, 8, 23, 7, 22, 7, 21];
 
-const D2R = Math.PI / 180;
 function mod360(x) { let v = x % 360; if (v < 0) v += 360; return v; }
 function angDiff(a, b) { let d = mod360(a - b); if (d > 180) d -= 360; return d; }
 
@@ -134,7 +133,6 @@ export function dayPillar(jdn) {
   return { gan: GANS[idx % 10], zhi: ZHIS[idx % 12], index: idx };
 }
 export function yearPillar(jde) {
-  const y = jdeToGregorian(jde).y;
   const lichun = termJdeNear(2, jde); // 立春 ord 2 near this jde
   const ganzhiYear = jde < lichun.jde ? lichun.year - 1 : lichun.year;
   const idx = ((ganzhiYear - 1984) % 60 + 60) % 60;

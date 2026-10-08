@@ -8,6 +8,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -41,6 +45,26 @@ jobs:
           path: gate.log
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: 在 PR 更新失败诊断
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- suanming-gate-diagnostic -->';
+            let log = 'gate.log 未生成';
+            if (fs.existsSync('gate.log')) log = fs.readFileSync('gate.log', 'utf8');
+            const body = `${marker}\n### CI 门禁失败诊断\n\n\`\`\`text\n${log.slice(-12000)}\n\`\`\``;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
+            const old = comments.data.find((c) => c.body && c.body.includes(marker));
+            if (old) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: old.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
 
       - name: 环境指纹
         if: always()

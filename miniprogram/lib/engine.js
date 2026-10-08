@@ -1,15 +1,6 @@
 /**
  * miniprogram/lib/engine.js — local deterministic calendar core (plain JS, ESM, runnable).
- * Scope/precision notes kept in ASCII:
- *   - Gregorian<->Julian Day exact (Meeus Fliegel inverse).
- *   - gregorianToJde(y,m,d) returns the JDN for that day (noon coordinate epoch) as an integer.
- *   - Solar apparent longitude: high-precision VSOP87+岁正+星动+光行差+FK5 (lib/solarlon.js),
- *     error vs authoritative tables <= ~0.2 min. Low-precision Meeus kept in solarLongitudeLow.
- *   - Each solar term solved by bisection where apparent lon = 285+15*ord (deg).
- *   - Day pillar anchored: 1949-10-01 = 甲子日 (idx 0) => 2000-01-01 = 戊午日 (idx 55).
- *   - Lunar phases (朔望) solved by Meeus new-moon; lunisolar month table built build-time
-     (闰月 via 中气), see lib/lunar-table.js.
- *   - Range 1900-2100; out-of-range throws.
+ * Range 1900-2100; out-of-range user input throws.
  */
 'use strict';
 
@@ -24,7 +15,6 @@ export const TERMS = [
 ];
 export const MIN_YEAR = 1900;
 export const MAX_YEAR = 2100;
-// approx day-in-month each term falls (ord index); used only as bisection GUESS window
 const TERM_REF_MONTH = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12];
 const TERM_REF_DAY = [5, 20, 4, 19, 5, 20, 5, 20, 5, 21, 5, 21, 7, 22, 7, 23, 7, 23, 8, 23, 7, 22, 7, 21];
 
@@ -32,12 +22,12 @@ function mod360(x) { let v = x % 360; if (v < 0) v += 360; return v; }
 function angDiff(a, b) { let d = mod360(a - b); if (d > 180) d -= 360; return d; }
 
 // ---- date <-> JDN ----
-// ---- date <-> JDN ----
 export function gregorianToJde(y, m, d) {
   if (y < MIN_YEAR || y > MAX_YEAR) throw new Error('range ' + y);
   return gregorianToJdeAny(y, m, d);
 }
-/** 无年份范围校验的 JDN 换算，仅供节气内部搜索越界一年时使用（不暴露为用户输入）。 */
+
+/** 无年份范围校验的 JDN 换算，仅供节气内部跨年搜索。 */
 function gregorianToJdeAny(y, m, d) {
   const a = Math.floor((14 - m) / 12);
   const yy = y + 4800 - a;
@@ -45,6 +35,7 @@ function gregorianToJdeAny(y, m, d) {
   return d + Math.floor((153 * mm + 2) / 5) + 365 * yy
     + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
 }
+
 export function jdeToGregorian(jde) {
   const z = Math.floor(jde + 0.5);
   const f = jde + 0.5 - z;
@@ -64,17 +55,13 @@ export function jdeToGregorian(jde) {
   return { y: year, m: month, d: di, h: (day - di) * 24 };
 }
 
-// ---- solar apparent longitude (高精度视黄经，见 solarlon.js) ----
-// 生产主路径：完整 VSOP87+岁正+星动+光行差+FK5。对权威年表误差 ≤~0.2 min。
-// 原 Meeus 低精度（engine 内联）已移入 solarlon.solarLongitudeLow 作为兼容/blob。
+// ---- solar apparent longitude ----
 export function solarLon(jde) {
   return solarLongitude(jde);
 }
 function zcross(a, b, tgt) { return angDiff(b, tgt) * angDiff(a, tgt) <= 0; }
 
-/** bisect for JDE when lon reaches target within an initial window [lo,hi]. */
 function solveLonWindow(target, lo, hi) {
-  // widen a bit if needed
   let a = lo, b = hi;
   for (let s = 0; s < 12; s++) {
     if (zcross(solarLon(a), solarLon(b), target)) break;
@@ -83,20 +70,17 @@ function solveLonWindow(target, lo, hi) {
   for (let i = 0; i < 60; i++) {
     const mid = (a + b) / 2;
     if (zcross(solarLon(a), solarLon(mid), target)) b = mid; else a = mid;
-    if (b - a < 0.0004) break; // sub-minute
+    if (b - a < 0.0004) break;
   }
   return (a + b) / 2;
 }
 
-/** JDE of a given term ord in a given Gregorian year (guess from approx month).
- * 内部允许年份上下越界一年（节气求解需要跨到用户合法范围外），不因此抛错。 */
 export function termJde(ord, year) {
   const guess = gregorianToJdeAny(year, TERM_REF_MONTH[ord], TERM_REF_DAY[ord]);
   const target = mod360(285 + ord * 15);
   return solveLonWindow(target, guess, guess);
 }
 
-/** JDE of term ord nearest to a given jde (searches civil years y-1..y+1). */
 export function termJdeNear(ord, jde) {
   const y = jdeToGregorian(jde).y;
   let best = null, bestD = Infinity;
@@ -108,42 +92,43 @@ export function termJdeNear(ord, jde) {
   return best;
 }
 
-/**
- * 统一节气 bracket（单一事实源）：给定任意 JDE，返回它前后最近的节气，以及距下一个节气
- * 的天际（天）。`prev.next`、全页（index 首页 / result / today / terms）都用它，杜绝多处
- * 各自定义 `SolarTermResult` 而漂移。
- * @returns {{prev:null|{name,ord,utc,jde}, next:null|{name,ord,utc,jde}, daysToNext:number|null}}
- */
 export function solarTermResultAt(jde) {
   let prev = null, next = null, bestP = -Infinity, bestN = Infinity;
   for (let o = 0; o < 24; o++) {
     const t = termJdeNear(o, jde);
     if (!t) continue;
-    if (t.jde <= jde && t.jde > bestP) { bestP = t.jde; prev = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde }; }
-    if (t.jde >= jde && t.jde < bestN) { bestN = t.jde; next = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde }; }
+    if (t.jde <= jde && t.jde > bestP) {
+      bestP = t.jde;
+      prev = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde };
+    }
+    if (t.jde >= jde && t.jde < bestN) {
+      bestN = t.jde;
+      next = { name: TERMS[o], ord: o, utc: isoUtc(t.jde), jde: t.jde };
+    }
   }
-  const daysToNext = next ? Number(((next.jde - jde)).toFixed(4)) : null;
+  const daysToNext = next ? Number((next.jde - jde).toFixed(4)) : null;
   return { prev, next, daysToNext };
 }
 
 // ---- pillars ----
 export function dayPillar(jdn) {
-  // 锚点 1949-10-01 = 甲子日（idx 0）。当前 2000-01-01 = 戊午日。
   const idx = (((54 + (Math.floor(jdn + 0.5) - 2451545)) % 60) + 60) % 60;
   return { gan: GANS[idx % 10], zhi: ZHIS[idx % 12], index: idx };
 }
+
 export function yearPillar(jde) {
-  const lichun = termJdeNear(2, jde); // 立春 ord 2 near this jde
+  const lichun = termJdeNear(2, jde);
   const ganzhiYear = jde < lichun.jde ? lichun.year - 1 : lichun.year;
   const idx = ((ganzhiYear - 1984) % 60 + 60) % 60;
   return { gan: GANS[idx % 10], zhi: ZHIS[idx % 12], ganzhiYear, liChunJde: lichun.jde, index: idx };
 }
 
-// ---- EoT (Minutes) : Spencer / solar-decl formula (engineering accuracy +/-1 min) ----
+// ---- Equation of Time ----
 function dayOfYear(y, m, d) {
   const start = gregorianToJde(y, 1, 1);
   return Math.round(gregorianToJde(y, m, d) - start) + 1;
 }
+
 export function eotMinutes(jde) {
   const g = jdeToGregorian(jde);
   const n = dayOfYear(g.y, g.m, g.d);
@@ -154,14 +139,19 @@ export function eotMinutes(jde) {
 }
 
 // ---- ISO ----
+/**
+ * JDE(UT) → UTC ISO，精确到分钟。
+ * 直接把 JDE 映射到 Unix 分钟并统一四舍五入，天然处理 23:59.5 → 次日 00:00，
+ * 避免手工分别 round 分钟产生 `12:60:00Z` 这类非法时间。
+ */
 export function isoUtc(jde) {
-  const g = jdeToGregorian(jde);
-  const hh = Math.floor(g.h); const mm = Math.round((g.h - hh) * 60);
+  const unixMinutes = Math.round((jde - 2440587.5) * 1440);
+  const d = new Date(unixMinutes * 60000);
   const pad = (n, w) => String(n).padStart(w, '0');
-  return `${pad(g.y, 4)}-${pad(g.m, 2)}-${pad(g.d, 2)}T${pad(hh, 2)}:${pad(mm, 2)}:00Z`;
+  return `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1, 2)}-${pad(d.getUTCDate(), 2)}`
+    + `T${pad(d.getUTCHours(), 2)}:${pad(d.getUTCMinutes(), 2)}:00Z`;
 }
 
-/** Find the two terms bracketing a given instant jde: {prev,next}. */
 function findBracket(jde) {
   let prev = null, next = null;
   let bestPrev = -Infinity, bestNext = Infinity;
@@ -174,7 +164,6 @@ function findBracket(jde) {
   return { prev, next: next || prev };
 }
 
-/** Compose a facts object for a given Gregorian calendar date. */
 /** Compose a facts object for a given Gregorian calendar date. */
 export function buildFacts(y, m, d) {
   const jd = gregorianToJde(y, m, d);

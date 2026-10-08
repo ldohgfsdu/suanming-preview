@@ -143,8 +143,11 @@ test('I12 云函数服务端校验：事实校验必须先于模型调用，两�
 function extractServerValidator() {
   const fn = readFileSync(resolve(__dirname, '../../cloudfunctions/insight/index.js'), 'utf8');
   const src = fn.slice(fn.indexOf('function isPlainObject'), fn.indexOf('function stable'));
+  const prefix = [
+    'const FACTS_MAX_CHARS = 8000;',
+  ].join('\n');
   // eslint-disable-next-line no-new-func
-  return new Function(src + '\n return validateFacts;')();
+  return new Function(prefix + '\n' + src + '\n return validateFacts;')();
 }
 
 test('I13 事实校验逻辑：非法干支/五行/未知字段/超长 payload 均拒绝', () => {

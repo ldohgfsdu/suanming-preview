@@ -1,6 +1,5 @@
 // pages/today/today.js — 今日天时独立页。
-// 展示当日完整的历法档案：四柱干支、农历、节气 bracket、月相月龄、日出日落、真太阳时、五行分布。
-// 全部为真实天文历法计算，纯展示。
+// 本页的“今日”固定采用北京时间（UTC+8）与北京坐标，避免设备位于其他时区时混用口径。
 import { computeArchive, ELEMENT_NAME, hourPillar } from '../../lib/archive.js';
 import { dayPillar, gregorianToJde } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
@@ -13,6 +12,13 @@ const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', 
   '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
 
 function pad(n) { return String(n).padStart(2, '0'); }
+function beijingNowParts() {
+  const d = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  return {
+    y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(),
+    hour: d.getUTCHours(), minute: d.getUTCMinutes(), second: d.getUTCSeconds(),
+  };
+}
 function litMoon(age) {
   if (age == null || !Number.isFinite(age)) return null;
   const f = ((age % 29.530588861) + 29.530588861) % 29.530588861 / 29.530588861;
@@ -24,7 +30,7 @@ function parseHM(hhmm) {
   const p = hhmm.split(':').map((n) => parseInt(n, 10));
   return p[0] * 60 + (p[1] || 0);
 }
-// 十二时辰（名 / 现代时间范围 / 中点 hour）
+
 const SHICHEN = [
   { name: '子时', range: '23:00–01:00', hour: 0 },
   { name: '丑时', range: '01:00–03:00', hour: 2 },
@@ -40,7 +46,6 @@ const SHICHEN = [
   { name: '亥时', range: '21:00–23:00', hour: 22 },
 ];
 
-// 二十四节气·文化小辑（每句为人文单故/时令常识，纯科普、不含任何运字/判定）
 const TERM_INFO = {
   立春: '春季之始。东风解冻，蛰虫始振。古人于此日“咬春”食春饼，迎春御寒。',
   雨水: '冰雪消融成雨。草木萌动，正是“春雨贵如油”的开始。',
@@ -76,17 +81,15 @@ Page({
     pillars: [],
     tally: [],
     term: { prev: '', next: '', days: '' },
-    termInfo: '',    moon: { name: '', age: '' },
+    termInfo: '',
+    moon: { name: '', age: '' },
     sun: { sunrise: '', sunset: '', daylight: '' },
     shichen: [],
     nowText: '',
     loading: true,
   },
 
-  onLoad() {
-    this.buildToday();
-    // 时钟改由 onShow 启动、onHide 停止：本页被压栈隐藏时不必继续每 30s 刷一次
-  },
+  onLoad() { this.buildToday(); },
   onShow() {
     if (!this._ticker) this._ticker = setInterval(() => this.refreshClock(), 30000);
   },
@@ -103,31 +106,25 @@ Page({
     };
   },
   onPullDownRefresh() {
-    // 下拉刷新：重新计算当日天象（含实时月份/时辰结转）
     this.buildToday();
     wx.stopPullDownRefresh();
   },
 
   buildToday() {
-    const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+    const now = beijingNowParts();
+    const y = now.y, m = now.m, d = now.d;
     try {
       const f = computeArchive(y, m, d);
       const lunar = solarToLunar(y, m, d) || null;
-      // 四柱
       const pillars = ['year', 'month', 'day']
         .filter((k) => f.four[k])
         .map((k) => ({ label: f.four[k].label, ganz: f.four[k].ganz, elem: ELEMENT_NAME[f.four[k].element] }));
-      // 五行分布：固定 5 项全列（含 0），与档案页「五行四柱字数」口径一致
       const tallyArr = ['wood', 'fire', 'earth', 'metal', 'water']
         .map((k) => ({ name: ELEMENT_NAME[k], n: (f.tally[k] || 0) }));
-      // 节气
       const prev = f.term.prev ? `${f.term.prev.name} ${fmtTermDate(f.term.prev.utc)}` : '—';
       const next = f.term.next ? `${f.term.next.name} ${fmtTermDate(f.term.next.utc)}` : '—';
       const daysToNext = f.term.daysToNext != null ? fmtDaysLeft(f.term.daysToNext) : '—';
-      // 日出日落（默认北京经纬度）
       const sun = sunTimes(y, m, d, 116.4074, 39.9042);
-      // 今日十二时辰干支表（五鼠遁）
       const dayStemIdx = dayPillar(gregorianToJde(y, m, d)).index % 10;
       const shichen = SHICHEN.map((s) => {
         const hp = hourPillar(dayStemIdx, s.hour);
@@ -135,7 +132,7 @@ Page({
       });
       this.setData({
         loading: false,
-        dateText: `${y}年${m}月${d}日`,
+        dateText: `${y}年${m}月${d}日 · 北京口径`,
         lunarText: lunar ? `${lunar.year}年${(lunar.leap ? '闰' : '')}${MONTH_CN[lunar.month - 1]}月${dayCn(lunar.day)}` : '—',
         ganzhi: {
           year: f.four.year ? f.four.year.ganz : '—',
@@ -151,7 +148,11 @@ Page({
           sunset: sun.valid ? sun.sunset : '—',
           daylight: sun.valid ? this.daylightText(sun.sunrise, sun.sunset) : '—',
         },
-        moon: { phase: f.moon ? f.moon.name : '—', age: f.moon ? `${Number(f.moon.ageDays).toFixed(1)} 天` : '—', lit: f.moon ? litMoon(f.moon.ageDays) : null },
+        moon: {
+          phase: f.moon ? f.moon.name : '—',
+          age: f.moon ? `${Number(f.moon.ageDays).toFixed(1)} 天` : '—',
+          lit: f.moon ? litMoon(f.moon.ageDays) : null,
+        },
         shichen,
       });
       this.refreshClock();
@@ -161,28 +162,23 @@ Page({
   },
 
   refreshClock() {
-    const now = new Date();
-    this.setData({ nowText: `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}` });
+    const now = beijingNowParts();
+    this.setData({ nowText: `${pad(now.hour)}:${pad(now.minute)}:${pad(now.second)}` });
   },
 
-  // 由日出/日落时间计算白昼时长（处理跨午夜与四舍五入）
   daylightText(sunrise, sunset) {
     try {
-      let mins = (parseHM(sunset) - parseHM(sunrise) + 24 * 60) % (24 * 60);
+      const mins = (parseHM(sunset) - parseHM(sunrise) + 24 * 60) % (24 * 60);
       return `${Math.floor(mins / 60)}小时${Math.round(mins % 60)}分`;
     } catch (e) { return '—'; }
   },
 
-  // 用「今日」作为出生档案默认日期，返回首页
   fillToday() {
-    const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
-    const solar = `${y}-${pad(m)}-${pad(d)}`;
+    const now = beijingNowParts();
+    const solar = `${now.y}-${pad(now.m)}-${pad(now.d)}`;
     const pages = getCurrentPages();
     const prev = pages.length >= 2 ? pages[pages.length - 2] : null;
-    if (prev && typeof prev.applyToday === 'function') {
-      prev.applyToday(solar);
-    }
+    if (prev && typeof prev.applyToday === 'function') prev.applyToday(solar);
     wx.navigateBack();
   },
 });

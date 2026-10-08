@@ -47,9 +47,16 @@ test('EoT stays within +/-17 minutes for key dates', () => {
     const v = e.eotMinutes(e.gregorianToJde(y, m, d));
     assert.ok(Math.abs(v - expect) < 1.5, `EoT=${v.toFixed(2)} expect=${expect}`);
   };
-  inBounds(2023, 2, 11, -14.2); // near Feb max negative
+  inBounds(2023, 2, 11, -14.2);
   inBounds(2023, 5, 4, +3.4);
-  inBounds(2023, 11, 3, +16.4); // near Nov max positive
+  inBounds(2023, 11, 3, +16.4);
+});
+
+test('isoUtc rounds 23:59:40 into the next day instead of emitting minute 60', () => {
+  // gregorianToJde(2000-01-01) = 12:00 UTC；再加 11:59:40 到当日 23:59:40。
+  const jde = e.gregorianToJde(2000, 1, 1) + (11 * 3600 + 59 * 60 + 40) / 86400;
+  assert.strictEqual(e.isoUtc(jde), '2000-01-02T00:00:00Z');
+  assert.doesNotMatch(e.isoUtc(jde), /:60:/);
 });
 
 test('out of range year throws', () => {

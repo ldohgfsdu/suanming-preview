@@ -28,9 +28,22 @@ jobs:
         run: npm ci
 
       - name: 统一门禁
-        run: npm run gate
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run gate 2>&1 | tee gate.log
+
+      - name: 保留门禁日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-log
+          path: gate.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: 环境指纹
+        if: always()
         run: |
           node -e "console.log('NODE=' + process.version); console.log('INTL_LOCALE=' + process.env.LANG); console.log('TZ=' + process.env.TZ)"
           npx tsc -v

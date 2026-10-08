@@ -3,12 +3,16 @@
   "functions": [
     {
       "name": "insight",
-      "timeout": 60,
+      "timeout": 20,
       "memorySize": 256,
       "runtime": "Nodejs16.13",
-      "description": "东方时间文化档案 · 历法文化解读（AI 只做解释，不做判定）",
+      "description": "东方时间文化档案 · 历法文化解读（OPENID 校验 + 限流 + 服务端事实 Guard）",
       "envVariables": {
-        "INSIGHT_MODEL": "deepseek-v4-flash"
+        "INSIGHT_MODEL": "deepseek-v4-flash",
+        "INSIGHT_RATE_MINUTE_MAX": "6",
+        "INSIGHT_RATE_DAY_MAX": "40",
+        "INSIGHT_CACHE_TTL_MS": "86400000",
+        "INSIGHT_CACHE_MAX": "128"
       }
     }
   ]

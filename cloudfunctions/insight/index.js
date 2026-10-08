@@ -384,7 +384,9 @@ exports.main = async (event) => {
       cachePut(key, insight);
       return jsonReply(true, { insight });
     }
-    lastError = errors.length ? errors.join(',') : lastError;
+    // 模型没产出可校验对象时，guard 只会给出 not_object，会把真实模型错误盖掉；
+    // 只有拿到了对象却没过校验时，才用校验错误替换。
+    if (parsed) lastError = errors.join(',') || lastError;
     if (attempt === 0) hint = lastError;
   }
 

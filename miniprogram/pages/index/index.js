@@ -1,8 +1,8 @@
 // pages/index/index.js — 东方时间文化档案 首页。
 // 纯天文历法事实：时间、节气、干支、太阳时间、农历、五行字面计数。
 
-import { computeArchive, ELEMENT_NAME as ELEM_NAME } from '../../lib/archive.js';
-import { gregorianToJde, dayPillar, hourPillar } from '../../lib/engine.js';
+import { computeArchive, ELEMENT_NAME as ELEM_NAME, hourPillar } from '../../lib/archive.js';
+import { gregorianToJde, dayPillar } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { PROVINCE_NAMES, cityNames, districtNames, locateProvinceCity } from '../../lib/place.js';
 import { lunarToSolar, lunarMonthsOfYear, lunarDaysOfMonth } from '../../lib/lunarReverse.js';
@@ -528,12 +528,16 @@ Page({
       if (dayChanged || timeChanged) {
         const oldDp = dayPillar(gregorianToJde(calcInput.y, calcInput.m, calcInput.d));
         const oldHp = hourPillar(oldDp.index % 10, calcHour);
+        // engine.dayPillar 返回 {gan,zhi,index}，hourPillar 返回 {gan,zhi,ganzhi}；
+        // 两者都没有 f.four.* 的 .ganz 字段，直接取会把「undefined」写进用户可见弹窗。
+        const oldDpGanz = oldDp.gan + oldDp.zhi;
+        const oldHpGanz = oldHp ? oldHp.ganzhi : null;
         const newDp = f.four.day;
         const newHp = f.four.hour;
         const pieces = [];
-        if (f.dayShift !== 0 && newDp.ganz !== oldDp.ganz) pieces.push(`日柱：${oldDp.ganz} → ${newDp.ganz}`);
+        if (f.dayShift !== 0 && newDp.ganz !== oldDpGanz) pieces.push(`日柱：${oldDpGanz} → ${newDp.ganz}`);
         else if (f.dayShift !== 0) pieces.push(`日历日：${calcInput.y}-${calcInput.m}-${calcInput.d} → ${f.trueSolar.canonDateText}`);
-        if (newHp && oldHp && newHp.ganz !== oldHp.ganz) pieces.push(`时柱：${oldHp.ganz} → ${newHp.ganz}`);
+        if (newHp && oldHpGanz && newHp.ganz !== oldHpGanz) pieces.push(`时柱：${oldHpGanz} → ${newHp.ganz}`);
         if (pieces.length === 0 && corIdx !== rawIdx) pieces.push(`时辰：${SHICHEN[rawIdx].name} → ${SHICHEN[corIdx].name}`);
         const title = dayChanged ? '真太阳时校正跨日' : '时辰变更提示';
         const offTxt = `${f.trueSolar.offsetMinutes > 0 ? '+' : ''}${f.trueSolar.offsetMinutes} 分钟`;

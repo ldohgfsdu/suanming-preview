@@ -1,32 +1,20 @@
 <view class="page">
 
-  <!-- 日期头 -->
   <view class="head">
     <view class="date">{{dateText}}</view>
-    <view class="clock" wx:if="{{nowText}}">{{nowText}}</view>
+    <view class="clock" wx:if="{{nowText}}">北京时间 {{nowText}}</view>
     <view class="sub" wx:if="{{lunarText}}">{{lunarText}}</view>
   </view>
 
-  <!-- 当日干支 -->
   <view class="card">
     <view class="sec-title">今日干支</view>
     <view class="ganzhi-row">
-      <view class="gz-item">
-        <view class="gz-sub">年</view>
-        <view class="gz-big">{{ganzhi.year}}</view>
-      </view>
-      <view class="gz-item">
-        <view class="gz-sub">月</view>
-        <view class="gz-big">{{ganzhi.month}}</view>
-      </view>
-      <view class="gz-item">
-        <view class="gz-sub">日</view>
-        <view class="gz-big">{{ganzhi.day}}</view>
-      </view>
+      <view class="gz-item"><view class="gz-sub">年</view><view class="gz-big">{{ganzhi.year}}</view></view>
+      <view class="gz-item"><view class="gz-sub">月</view><view class="gz-big">{{ganzhi.month}}</view></view>
+      <view class="gz-item"><view class="gz-sub">日</view><view class="gz-big">{{ganzhi.day}}</view></view>
     </view>
   </view>
 
-  <!-- 节气 -->
   <view class="card">
     <view class="sec-title">节气</view>
     <view class="kv"><text class="k">上一个</text><text class="v">{{term.prev}}</text></view>
@@ -35,7 +23,6 @@
     <view class="term-info" wx:if="{{termInfo}}">{{termInfo}}</view>
   </view>
 
-  <!-- 月相 -->
   <view class="card">
     <view class="sec-title">月相</view>
     <view class="kv"><text class="k">月相</text><text class="v">{{moon.phase}}</text></view>
@@ -47,7 +34,6 @@
     </view>
   </view>
 
-  <!-- 日升日落 -->
   <view class="card">
     <view class="sec-title">日出日落（北京）</view>
     <view class="kv"><text class="k">日出</text><text class="v">{{sun.sunrise}}</text></view>
@@ -55,7 +41,6 @@
     <view class="kv"><text class="k">白昼时长</text><text class="v">{{sun.daylight}}</text></view>
   </view>
 
-  <!-- 四柱与五行 -->
   <view class="card" wx:if="{{pillars.length}}">
     <view class="sec-title">四柱（今日）</view>
     <view class="pillars">
@@ -68,7 +53,6 @@
     <view class="kv"><text class="k">五行四柱字数</text><text class="v">{{tally}}</text></view>
   </view>
 
-  <!-- 今日时辰表 -->
   <view class="card" wx:if="{{shichen.length}}">
     <view class="sec-title">今日时辰</view>
     <view class="shichen-grid">
@@ -81,8 +65,6 @@
     <view class="foot-sub">时柱天干按「五鼠遁」由今日日柱推得。</view>
   </view>
 
-  <!-- 操作 -->
   <button class="btn-fill" bindtap="fillToday">以今日作为出生档案日期</button>
-
-  <view class="foot-note">以上由真实天文历法计算，结果源自真太阳时、节气等历法数据，仅供传统文化研究与娱乐参考。</view>
+  <view class="foot-note">以上统一采用北京时间与北京坐标口径，由真实天文历法计算，仅供传统文化研究与娱乐参考。</view>
 </view>

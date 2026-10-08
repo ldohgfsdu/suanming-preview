@@ -1,12 +1,11 @@
-// pages/history/history.js — 历史档案（本地存储，P0-5 基础版）。
-// 仅读取首页 wx.setStorageSync 写入的本地记录；支持逐条删除与清空，删除即真正移除。
-// 不含任何云服务依赖；展示出生时间/地点等用户自填信息，均在用户设备本地。
-const HISTORY_KEY = 'eastTime.history.v1';
+// pages/history/history.js — 历史档案（本地存储）。
+const HISTORY_KEY = 'eastTime.history.v2';
+const LEGACY_HISTORY_KEY = 'eastTime.history.v1';
 
 Page({
   data: {
     list: [],
-    hasData: false,
+    has: false,
     loading: true,
   },
 
@@ -18,6 +17,7 @@ Page({
     let list = [];
     try {
       list = wx.getStorageSync(HISTORY_KEY) || [];
+      if (!list.length) list = wx.getStorageSync(LEGACY_HISTORY_KEY) || [];
     } catch (e) { list = []; }
     const fmt = (iso) => {
       if (!iso) return '';
@@ -30,12 +30,18 @@ Page({
     this.setData({ list: enriched, has: enriched.length > 0, loading: false });
   },
 
+  persist(list) {
+    try {
+      wx.setStorageSync(HISTORY_KEY, list);
+      // 一旦发生写操作即完成到 v2 的迁移，避免旧 key 再被读回。
+      wx.removeStorageSync(LEGACY_HISTORY_KEY);
+    } catch (e) { /* 本地存储失败不阻断页面 */ }
+  },
+
   onDelete(e) {
     const id = e.currentTarget.dataset.id;
     const list = (this.data.list || []).filter((r) => r.id !== id);
-    try {
-      wx.setStorageSync(HISTORY_KEY, list);
-    } catch (e) { /* 忽略 */ }
+    this.persist(list);
     this.setData({ list, has: list.length > 0 });
     wx.showToast({ title: '已删除', icon: 'none' });
   },
@@ -50,23 +56,21 @@ Page({
       confirmColor: '#9a6b4f',
       success: (res) => {
         if (!res.confirm) return;
-        try { wx.setStorageSync(HISTORY_KEY, []); } catch (e) { /* 忽略 */ }
+        this.persist([]);
         this.setData({ list: [], has: false });
       },
     });
   },
 
-  // 空状态：没有可「重新生成」的记录，直接回输入页（onUse 需要 data-id，此处不可复用）
   goCreate() {
     const pages = getCurrentPages();
     if (pages.length > 1) {
       wx.navigateBack();
       return;
     }
-    wx.navigateTo({ url: '/pages/index/index' });
+    wx.reLaunch({ url: '/pages/index/index' });
   },
 
-  // 从历史回到输入页（一次性带入该记录的日期）
   onUse(e) {
     const id = e.currentTarget.dataset.id;
     const r = (this.data.list || []).find((x) => x.id === id);
@@ -75,9 +79,7 @@ Page({
     const idx = pages.length - 2;
     if (idx >= 0 && pages[idx]) {
       const prev = pages[idx];
-      if (prev && typeof prev.applyHistory === 'function') {
-        prev.applyHistory(r);
-      }
+      if (prev && typeof prev.applyHistory === 'function') prev.applyHistory(r);
     }
     wx.navigateBack();
   },

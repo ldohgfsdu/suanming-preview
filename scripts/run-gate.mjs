@@ -1,21 +1,15 @@
-// 门禁统一入口 —— 绕开 npm 子进程 PATH 强插问题。
+// 门禁统一入口 —— 固定使用启动当前脚本的 Node，可在 Windows / Linux CI 一致运行。
 //
-// 背景：本机存在多个 Node（18.20.4 与 22.22.2）。npm 在 Windows 上运行
-// scripts 时，会把自己的 node 目录强插到子进程 PATH 最前，因此：
-//
-//   即使外层用 node18 绝对路径调用 npm，子进程里的 `node` 仍解析到 22
-//
-// 后果是 `--experimental-vm-modules` 等 Node 18/22 行为差异会伪装成
-// MODULE_NOT_FOUND / 语法错误，极易被误判为代码缺陷（已发生两次）。
-//
-// 本入口的做法：自己按 process.execPath 找齐工具链内的可执行文件，
-// 用绝对路径逐个调用，全程不让子进程去猜 `node` 是谁。
+// 背景：开发机可能同时存在多个 Node。npm 在 Windows 上运行 scripts 时，会把自己的
+// node 目录插到子进程 PATH 前面，导致门禁子进程误用另一个 Node。这里不再让子进程
+// 自己解析 `node`：所有步骤都直接使用 process.execPath。
 //
 // 用法（推荐）：
 //   node scripts/run-gate.mjs
+//
 // 环境变量：
-//   SUANMING_NODE_DIR   指定 Node 根目录（含 node.exe / node_modules/npm）
-//                      不指定时从当前 process.execPath 推断
+//   SUANMING_NODE_BIN   可显式指定 Node 可执行文件；默认 process.execPath。
+//                      仅用于特殊本地工具链，CI 不需要设置。
 //
 // 退出码：0 = 全部门禁通过；非 0 = 首个失败环节的退出码
 
@@ -31,25 +25,13 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const requiredNode = pkg.engines.node;
 const requiredMajor = requiredNode.split('.')[0];
-
-// ── 定位 Node 根目录 ────────────────────────────────────────────────
-// 优先用显式指定；否则从当前 process.execPath 反推（…\<root>\node.exe）。
-function resolveNodeDir() {
-  if (process.env.SUANMING_NODE_DIR) {
-    return process.env.SUANMING_NODE_DIR;
-  }
-  // process.execPath = <root>\node.exe  →  root = dirname(execPath)
-  return dirname(process.execPath);
-}
-
-const nodeDir = resolveNodeDir();
-const nodeBin = join(nodeDir, 'node.exe');
-const npmCli = join(nodeDir, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+const nodeBin = process.env.SUANMING_NODE_BIN || process.execPath;
+const nodeDir = dirname(nodeBin);
 
 if (!existsSync(nodeBin)) {
   console.error(
-    `[gate] 找不到 node.exe：${nodeBin}\n` +
-      `请设置 SUANMING_NODE_DIR 指向 Node 根目录（含 node.exe 与 node_modules/npm）。`
+    `[gate] 找不到 Node 可执行文件：${nodeBin}\n` +
+      '请用项目固定 Node 启动门禁，或设置 SUANMING_NODE_BIN。',
   );
   process.exit(1);
 }
@@ -59,8 +41,7 @@ if (!thisNode.replace(/^v/, '').startsWith(requiredMajor + '.')) {
   console.error(
     `[gate] 启动门禁的 Node 版本不对：要求 v${requiredMajor}.x（engines=${requiredNode}），` +
       `当前 ${thisNode}（${process.execPath}）。\n` +
-      `请用项目固定版本启动，例如：\n` +
-      `  powershell -ExecutionPolicy Bypass -File .\\scripts\\setup-env.ps1`
+      '请切换到项目固定 Node 18.20.4 后重试。',
   );
   process.exit(1);
 }
@@ -75,7 +56,6 @@ const steps = [
   ['测试编译', [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.test.json']],
 ];
 
-// node --test 需要分别跑（TS 与 mjs 两个测试根），单独处理。
 const testRuns = [
   ['TS 单测', ['--test', '--experimental-vm-modules', 'dist-test/tests/unit']],
   ['mjs 单测', ['--test', 'tests/unit']],
@@ -83,10 +63,11 @@ const testRuns = [
 
 function run(label, args) {
   process.stdout.write(`\n── ${label} ──\n`);
+  const pathSep = process.platform === 'win32' ? ';' : ':';
   const r = spawnSync(nodeBin, args, {
     cwd: repoRoot,
     stdio: 'inherit',
-    env: { ...process.env, PATH: `${nodeDir};${process.env.PATH}` },
+    env: { ...process.env, PATH: `${nodeDir}${pathSep}${process.env.PATH || ''}` },
   });
   if (r.error) {
     console.error(`[gate] ${label} 无法启动：${r.error.message}`);
@@ -100,7 +81,6 @@ function run(label, args) {
 
 console.log(`[gate] Node ${thisNode}`);
 console.log(`[gate] nodeBin = ${nodeBin}`);
-console.log(`[gate] npm     = ${npmCli}`);
 
 for (const [label, args] of steps) run(label, args);
 for (const [label, args] of testRuns) run(label, args);

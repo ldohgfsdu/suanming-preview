@@ -4,57 +4,114 @@
 > 产品事实源：见父目录 `preview-docs/` 冻结文档体系与 `governance/`。
 > 本仓库**不做**算命 / 预测 / 吉凶 / 运势 / 合婚择日等（PRD §1.2 / §13 P2 Never）。
 
-本仓库是 Suanming Preview 的**工程实现仓库**，承载 `miniprogram / cloudfunctions / engine / insight / shared` 五目录与 CI。
+本仓库是 Suanming Preview 的工程实现仓库，当前生产链由原生微信小程序、确定性历法 JS 内核和 CloudBase `insight` 云函数组成。
 
-> 迁移状态（2026-10-07）：五目录为目标架构，尚未全部落地 —— `engine/` 现仅 `lib/types.ts`，`insight/` 为空目录（知识源、prompt、Guard 仍在 `miniprogram/lib/insight.js` 与 `cloudfunctions/insight/`），`miniprogram/lib/` 内 14 个历法模块为当前唯一实现。
+> **迁移状态（2026-10-08 / V4）**：`engine/`、`insight/`、`shared/` 仍是目标分层架构，尚未完全取代 `miniprogram/lib/` 的生产实现。`shared/domain/archiveDocument.ts` 的冻结 hash/schema 契约已经存在，但当前 AI 服务端使用的是对 AI 事实子集进行规范化后生成的服务端 SHA-256 指纹，**尚不能宣称完整 ArchiveDocument/docHash 生产链已经闭环**。详见 `docs/审查报告_COMPREHENSIVE_V4_2026-10-08.md`。
 
-## 目录职责（Handbook §3 未来逻辑目录，依赖方向单向）
+## 当前生产链
 
+```text
+用户输入
+  ↓
+历史墙钟归一（1986–1991 中国夏时制 GAP/FOLD）
+  ↓
+标准北京时间 → 真太阳时 / 日界 / 时柱
+  ↓
+确定性历法引擎（本地，无模型参与）
+  ↓
+历法档案 / 本地历史
+  ↓（用户显式点击）
+CloudBase insight：OPENID → schema 校验 → 服务端 SHA-256 → 限流/缓存 → 模型 → Guard
+  ↓
+成功：AI 文化背景说明
+失败或 8s 未返回：本地确定性文化文本
 ```
+
+## 目标目录职责
+
+```text
 miniprogram  ──────────→ shared
 cloudfunctions ──→ engine ──→ shared
             └──→ insight ─→ shared
 （engine 与 insight 不得互依；Cloud Function 编排两者）
 ```
 
-| 目录 | 职责 | 禁止 |
+| 目录 | 目标职责 | 当前状态 |
 |---|---|---|
-| `miniprogram/` | 原生小程序页面、六组件、Token、本地缓存、云函数调用适配 | 历法算法、模型 SDK、密钥、事实修正 |
-| `cloudfunctions/` | API、openid 鉴权、校验、限流、编排、脱敏 | 页面表现、Core 变体、绕过 Guard |
-| `engine/` | TS 确定性历法迁移、trace、ArchiveDocument、规范化 hash | AI、网络、用户历史推理、数据库 |
-| `insight/` | 知识源、prompt、模型适配、Guard、缓存键、fallback | ArchiveInput 裸数据、历法重算、无来源文案 |
-| `shared/` | 跨层 schema、类型、错误码、版本标识、规范化约定 | 密钥、页面状态、数据库客户端、重复算法 |
+| `miniprogram/` | 原生小程序页面、交互、缓存、云函数适配 | **生产主链**；历法 JS 内核目前仍位于 `miniprogram/lib/` |
+| `cloudfunctions/` | API、鉴权、校验、限流、编排、脱敏 | `insight` 已要求 OPENID、严格 facts schema、单实例配额、服务端缓存与 Guard |
+| `engine/` | TS 确定性历法、trace、ArchiveDocument、规范化 hash | 尚在迁移，不能视为生产唯一实现 |
+| `insight/` | 知识源、prompt、模型适配、Guard、缓存 | 尚未独立成完整生产模块 |
+| `shared/` | 跨层 schema、类型、错误码、版本、hash 约定 | 冻结契约与测试存在；生产接线仍需继续收口 |
 
-## 工具链（固定版本，B-1）
+## 工具链
 
-- Node **18.20.4** + npm **10.7.0**（`.nvmrc` / `engines` 双固定）
-- Git：portable 2.55.0（`scripts/setup-env.ps1`）
-- TypeScript **5.4.5**（精确锁定，禁止浮动范围）
+- Node **18.20.4**（`.nvmrc` / `engines` 固定）
+- npm 锁文件安装：`npm ci`
+- TypeScript **5.4.5**
+- ESLint **8.57.x**
+- 云函数当前部署 runtime 仍为 **Nodejs16.13**（CloudBase 配置事实；与仓库 Node 18 工具链不是同一运行时）
 
-### 使用方式
+### 唯一门禁入口
 
-```powershell
-# 1. 加载项目工具链到当前 shell（Node/Git 已由本地安装，不在系统 PATH）
-powershell -ExecutionPolicy Bypass -File .\scripts\setup-env.ps1
-
-# 2. 安装依赖 + 全门禁（typecheck + lint + build + unit）
-npm install
-npm run test:all
+```bash
+npm ci
+npm run gate
 ```
 
-## 治理红线
+`npm run gate` 顺序固定为：
 
-- 未修改 Core（`bazi-core-1.3`）、未改冻结文档、未初始化云环境与真机。
-- hash 契约 `hash-contract-v1`；schema `archive-document-schema-v1`（S-4）；solar 3 值（S-9）。
-- 任何新增协议/依赖按 Governance / ADR 流程，不自行扩张。
+```text
+Node 版本守卫
+→ app.json / 生产源码隐私 API 自检
+→ TypeScript typecheck
+→ ESLint
+→ 测试构建
+→ TS 单测
+→ mjs 单测
+```
 
-## 里程碑记录（见 docs/）
+GitHub Actions 也只调用这一套门禁，不再维护第二份 CI 流程。
 
-- 2026-09-05：本地工具链落地（Node 18 + Git + TS 5.4.5），独立仓库建立，五目录骨架 + 版本/枚举协议 + 最小 CI 门禁跑通（4 单测全绿）。
-- 2026-09-11：核心与边界完善——修复 1900/2100 极值归档崩溃；节气精度验证（2024 全年 24/24 同日、分钟级）；补全基础功能（性别 / 五行条形 / 本地历史 / 今日天时独立页 / 全年节气历 / canvas 归档卡片 / 分享）；禁用词全量 0 命中；黄金对拍统一为「月/闰强断言 + 边界日 ±1 容差」诚实口径。
-- 2026-09-11：体验与门禁收官——首页滚动根因（wxml 多余闭合标签不平衡）修复 + 生成后自动滚动到结果；首页今日卡实时化「距下节气倒计时 + 月相月龄」；今日独立页新增十二时辰表（五鼠遁）与下拉刷新；农历边界日在结果卡明示「朔日 ±1 天」；computeArchive 全范围健壮性冒烟（17 例）入测试；文档新增《报名自查清单》；修复 test:all 未跑 mjs 套件的门禁漏洞，一键可复现 64/64 全绿（TS 编译 28 + mjs 36）。
-- 2026-09-11：终验收官——全站深色模式（darkmode + theme.json + CSS 变量，一套变量管明暗）；修复季/节气页历来缺 terms.wxss 与「12/24 节气」截断，补全为 24 节气分钟级；今日/节气/关于页支持微信分享（含 ?year 深链）；QA 全绿（64/64 单测、lunar 黄金 20/20、禁用词 0 实质命中、主包 226KB<2MB、5 页 wxml 平衡）。
-- 2026-09-15：天文精度收官——`solarlon.js` 升级 VSOP87+岁差+章动+光行差 高精度视黄经（误差 ≤~0.2min）；真太阳时确立「单一时间事实源」；农历月表落位（朔±1 诚实标记）；合规口径统一。门禁实测 **107/107**（TS 28 + mjs 79）。
-- 2026-09-30：全量纵深审查定稿 `governance/COMPREHENSIVE_REVIEW_V1.md`；门禁脚本跨 shell 加固；HEAD `8d86f0f`（63 commits）。
-- 2026-10-07：契约与体验修复——年/月柱与节气 bracket 改按**绝对出生瞬间**（北京墙钟）判定，纠正旧实现晚 20 小时造成的立春/节边界错判；子时日界判据统一走**地方太阳钟**；精确到分的 23:01–23:59 恢复真太阳时校正；农历文案日名改用 `DAY_CN`（原输出「正月正 / 正月13」）；facts 契约与内容安全文案收口（`—`、`未提供地点`、`排盘`、`预测` 不再进入事实层与正文）；修复结果页返回按钮错绑、历史空态按钮无响应、节气年份选择超出 `wx.showActionSheet` 6 项上限、分享卡越界与长文本溢出；AI 超时按 PRD 冻结红线改为 **8s 降级**（晚到的云端结果补写缓存）；时钟定时器改 onHide 停止；`eslint` 补齐 `miniprogram/` 覆盖。门禁实测 **145/145**（TS 28 + mjs 117），71 commits。
+**V4 实测（2026-10-08）：158/158 全绿 = TS 28 + mjs 130，typecheck 0 错、lint 0 错、隐私字段自检通过。**
 
+## 当前能力边界
+
+- **支持范围**：公历 1900–2100；首页日期选择从 1901 起，算法边界测试覆盖 1900/2100。
+- **节气**：高精度太阳视黄经求根；2026 年 24 节气回归锁定日期一致、分钟级偏差。
+- **历史中国夏时制**：1986–1991 墙钟已接入生产生成路径。拨快 GAP 拒绝静默猜测；拨回 FOLD 要求用户选择第一次/第二次。
+- **真太阳时**：出生时间先统一到标准北京时间，再按经度 + 均时差计算地方太阳时；日界/时柱使用太阳钟口径。
+- **月相月龄**：按实际出生绝对瞬间计算；时辰未知时明确以当日北京时间午正作为代表时刻。
+- **出生地点**：UI 覆盖省/市/区县名称，但当前内置计算坐标是**所属地级行政中心近似坐标**，不是区县级精确坐标；临界输入可在高级设置手动填经度。
+- **今日天时**：统一采用北京时间 + 北京坐标，不再混用设备本地日期与北京日出日落。
+- **历史档案**：v2 保存完整可恢复输入快照（历法模式、日期、时间、性别、地点/手动经度、DST fold 选择），重新生成可恢复原输入；v1 兼容读取后迁移。
+- **AI**：必须用户显式点击；客户端 8 秒即降级；服务端要求 OPENID、校验结构化事实、计算服务端 SHA-256、按文档指纹 + prompt + model + outputVersion 缓存并进行输出 Guard。
+- **AI 配额**：当前 6 次/分钟、40 次/日为**单云函数实例**第一层保护；公开大流量上线前仍需数据库/网关级全局配额，不能把当前实现描述为分布式强限流。
+
+## 隐私与数据
+
+- 不调用定位 API；地点来自内置名称表或用户手动经度。
+- 历史档案保存在设备本地。
+- 保存分享卡片时才使用相册写入权限，并在 `app.json` 声明用途。
+- `scripts/check-appjson-privacy.mjs` 会递归扫描 `miniprogram/**/*.{js,ts,wxs}` 中真实的 `wx.<locationApi>()` 调用，避免只检查 `app.json` 的假绿。
+- AI 云函数不接受客户端自报的 `docHash` 作为可信事实指纹。
+
+## 治理与未闭项
+
+V4 已修复一批生产级问题，但以下项目仍明确保留为后续架构任务，禁止在对外材料中写成“已完成”：
+
+1. 完整 `ArchiveInput → ArchiveDocument → docHash → AIInsight` 冻结契约尚未真正接入生产；当前服务端 hash 仅覆盖 AI 所需事实文档。
+2. AI 限流目前为单实例内存配额；公开高流量前需全局持久配额。
+3. `cloudfunctions/insight` 与 `miniprogram/cloudfunctions/insight` 仍为部署镜像双副本，测试强制一致，但还不是单一物理源。
+4. CloudBase 云函数 runtime 仍为 Nodejs16.13；升级前须先验证平台支持与 SDK 兼容性。
+5. 区县级真实经纬度尚未落地；当前已通过 UI 与文档明确披露地级行政中心近似值。
+6. 微信开发者工具 / 真机 E2E 仍应在提交比赛前做一次完整人工回归。
+
+## 里程碑
+
+- **2026-09-05**：独立仓库、Node 18 / TS 工具链、五目录骨架与最小 CI 建立。
+- **2026-09-11**：1900/2100 边界、历史/今日/全年节气/分享卡、深色模式和基础回归门禁逐步完善。
+- **2026-09-15**：太阳视黄经升级，真太阳时单一事实源与农历/月相精度收口；门禁 107/107。
+- **2026-09-30**：首次纵深审查完成。
+- **2026-10-07**：修复绝对出生瞬间、太阳钟日界、精确到分边界、AI 8 秒降级、UI/分享卡/ESLint 覆盖；门禁 145/145。
+- **2026-10-08 · V4 closure**：历史中国夏时制正式接入生产；GAP/FOLD 用户决策链落地；月龄改按实际出生瞬间；UTC 分钟进位修复；地点精度改为诚实近似披露；历史 v2 可复现；今日页统一北京口径；AI 增加 OPENID、严格 schema、服务端 SHA-256、版本化缓存与 Guard；客户端 AI 缓存改会话级；隐私扫描覆盖生产源码；CI 收敛为唯一门禁。**实测 158/158 全绿（TS 28 + mjs 130）。**

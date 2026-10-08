@@ -1,8 +1,5 @@
 // pages/index/index.js — 东方时间文化档案 首页。
-// 目标：降低输入门槛（出生地点选择，无需知道经度；公历/农历切换；时辰显示现代时间），
-//       增强可信度（今日天时、真太阳时说明、生成过程过渡）。
 // 纯天文历法事实：时间、节气、干支、太阳时间、农历、五行字面计数。
-// 相对导入保持带 .js 扩展名，与 lib/ 内既有约定一致。
 
 import { computeArchive, ELEMENT_NAME as ELEM_NAME } from '../../lib/archive.js';
 import { gregorianToJde, dayPillar, hourPillar } from '../../lib/engine.js';
@@ -10,20 +7,32 @@ import { solarToLunar } from '../../lib/lunar.js';
 import { PROVINCE_NAMES, cityNames, districtNames, locateProvinceCity } from '../../lib/place.js';
 import { lunarToSolar, lunarMonthsOfYear, lunarDaysOfMonth } from '../../lib/lunarReverse.js';
 import { sunTimes } from '../../lib/sun.js';
+import { resolveChinaCivilTime } from '../../lib/civilTime.js';
 import { fmtTermDate, fmtDaysLeft, fmtTermLong, fmtDaysLeftTechnical, fmtAgeDays, fmtTrueSolarMinutes, fmtLng } from '../../lib/display.js';
 
 function pad(n) { return String(n).padStart(2, '0'); }
-// 月相亮度比例（0=朔 … 1=望 … 0）及盈/亏方向，纯周期函数，用于小小的月亮示例条。
+function pad2(n) { return String(n).padStart(2, '0'); }
+
 function litMoon(age) {
   if (age == null || !Number.isFinite(age)) return null;
   const f = ((age % 29.530588861) + 29.530588861) % 29.530588861 / 29.530588861;
   const lit = Math.sin(Math.PI * f) ** 2;
   return { lit, litPct: Math.round(lit * 100), filling: f < 0.5 ? '盈' : '亏' };
 }
-const HISTORY_KEY = 'eastTime.history.v1';
+
+// 「今日天时」固定采用北京时间语义，避免设备位于海外时出现“本地日期 + 北京日出”的混合口径。
+function beijingNowParts() {
+  const d = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  return {
+    y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate(),
+    hour: d.getUTCHours(), minute: d.getUTCMinutes(), second: d.getUTCSeconds(),
+  };
+}
+
+const HISTORY_KEY = 'eastTime.history.v2';
+const LEGACY_HISTORY_KEY = 'eastTime.history.v1';
 const MAX_HISTORY = 50;
 
-// 十二时辰：现代时间范围（传统名称主、现代时间副）。内部 hour 为中点（子=0）。
 const SHICHEN = [
   { name: '子时', range: '23:00–01:00', hour: 0 },
   { name: '丑时', range: '01:00–03:00', hour: 2 },
@@ -39,16 +48,11 @@ const SHICHEN = [
   { name: '亥时', range: '21:00–23:00', hour: 22 },
 ];
 
-function pad2(n) { return String(n).padStart(2, '0'); }
-
-// 由真实时刻（本地时间小时）映射到十二时辰槽（子=23–01 … 亥=21–23）。
-// 时辰槽 k 覆盖 [2k-1, 2k+1)，据此把 getHours() 归入对应槽。
 function shichenIndexOfHour(h) {
-  if (!Number.isFinite(h)) return 0; // 未知
+  if (!Number.isFinite(h)) return 0;
   return Math.floor((((h + 1) + 24) % 24) / 2) % 12;
 }
 
-// 农历文字
 const MONTH_CN = ['', '正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
 const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
   '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
@@ -56,44 +60,37 @@ const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', 
 
 Page({
   data: {
-    // 公历/农历模式
     calMode: 'solar',
     solarDate: '',
     solarDateLabel: '',
 
-    // 农历选择器
     lunarYearList: [],
     lunarMonthLabels: [],
     lunarDayList: [],
-    lunarValue: [0, 0, 0],       // [年, 月, 日] 索引
+    lunarValue: [0, 0, 0],
     lunarLabel: '',
-    lunarSel: null,               // {year, month, leap, day}
-    lunarPreview: '',            // 农历→公历 即时换算预览
+    lunarSel: null,
+    lunarPreview: '',
 
-    // 出生时间：直接选 时:分（不设十二时辰档位）。
-    // 十二时辰由时刻自动推导，仅在结果与提示里展示，不作为输入维度。
-    timeUnknown: true,            // 不知道出生时间 → 时柱按「时辰未知」占位
-    hour: -1,                     // 内部小时数（-1=未知）
-    minute: 0,                    // 分钟（0–59）
-    preciseTime: '12:00',         // 原生 time 选择器值 HH:MM
-    shichenHint: '',              // 由时刻推导的十二时辰提示（未填写时为空）
-    hourLabel: '时辰未知',        // 结果/历史回显（已填写时为 HH:MM）
+    timeUnknown: true,
+    hour: -1,
+    minute: 0,
+    preciseTime: '12:00',
+    shichenHint: '',
+    hourLabel: '时辰未知',
 
-    // 性别（仅供档案存档，不参与历法计算）
     genders: ['男', '女'],
     gender: '男',
 
-    // 出生地点（省级菜单）
     provNames: PROVINCE_NAMES,
     provIdx: 0,
-    // 城市（非直辖市时用）与城区（非直辖时为区县列）
-    placeMode: 'municipal',        // 'municipal'=直辖市（两级：省→区） | 'province'（三级：省→市→县）
+    placeMode: 'municipal',
     cityNames: [],
     cityIdx: 0,
     districtNames: [],
     districtIdx: 0,
     placeLabel: '选择出生地点',
-    placeHint: '用于校正地方太阳时（真太阳时）',
+    placeHint: '区县用于名称选择；计算坐标采用所属地级行政中心近似值',
     placeLon: null,
     placeLat: null,
     placeValid: false,
@@ -102,37 +99,27 @@ Page({
     lonText: '',
     lonActive: false,
 
-    // 今日天时
     today: null,
-
-    // 结果
     hasResult: false,
     result: null,
 
-    // 生成过渡
     generating: false,
     genStepIndex: -1,
     genSteps: ['正在读取出生时间…', '正在校正地方太阳时…', '正在计算节气节点…', '正在生成东方时间档案…'],
     genText: '',
   },
 
-  // 分享：每次生成一份档案（首页）。
   onShareAppMessage() {
-    return {
-      title: '东方时间文化档案 — 基于真实天文历法',
-      path: '/pages/index/index',
-    };
+    return { title: '东方时间文化档案 — 基于真实天文历法', path: '/pages/index/index' };
   },
 
   onLoad() {
-    const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+    const now = beijingNowParts();
+    const y = now.y, m = now.m, d = now.d;
     this.initSolar(`${y}-${pad(m)}-${pad(d)}`);
     this.initLunarToToday(y, m, d);
     this.initPlace();
     this.buildToday(y, m, d);
-    // 时钟改由 onShow 启动、onHide 停止：本页会被 navigateTo 压栈隐藏，
-    // 只在 onUnload 清理的话，隐藏期间仍每 15s setData 一次（白耗渲染）。
     this.refreshClock();
   },
 
@@ -149,23 +136,20 @@ Page({
     if (this._genTimer) clearTimeout(this._genTimer);
   },
 
-  // ============ 公历 / 农历 ============
   initSolar(dateStr) {
     this.setData({ solarDate: dateStr, solarDateLabel: dateStr });
   },
-  // 公历/农历标签切换（不改动已选日期，仅切换输入模式）
+
   switchSolarMode() {
     this.setData({ calMode: 'solar' });
   },
-  // 一键回到今天：公历/农历日期归位今日；时辰自动设为当前真实时刻所在的时辰；
-  // 并刷新顶部「今日天时」卡、清空已生成的结果，让表单与今日天时彼此呼应。
+
   onResetToday() {
-    const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth() + 1, d = now.getDate();
+    const now = beijingNowParts();
+    const y = now.y, m = now.m, d = now.d;
     const t = `${y}-${pad(m)}-${pad(d)}`;
-    // 出生时间回填为当前时刻（已知时间开关同时打开，便于立即生成）
-    const hh = now.getHours();
-    const mm = now.getMinutes();
+    const hh = now.hour;
+    const mm = now.minute;
     const s = SHICHEN[shichenIndexOfHour(hh)];
     this.setData({
       timeUnknown: false,
@@ -176,15 +160,17 @@ Page({
       shichenHint: `${s.name}（${s.range}）`,
       hasResult: false,
       result: null,
-    }, () => wx.showToast({ title: '已更新为当前日期与时刻', icon: 'none' }));
+    }, () => wx.showToast({ title: '已更新为当前北京时间', icon: 'none' }));
     this.initSolar(t);
     this.initLunarToToday(y, m, d);
-    this.buildToday(y, m, d);   // 今日天时卡同步刷新（含当前时刻）
+    this.buildToday(y, m, d);
     this.refreshClock();
   },
+
   switchLunarMode() {
     this.setData({ calMode: 'lunar' });
   },
+
   onSolarDateChange(e) {
     this.setData({ solarDate: e.detail.value, solarDateLabel: e.detail.value, calMode: 'solar', hasResult: false, result: null });
   },
@@ -194,11 +180,12 @@ Page({
     for (let y = 1901; y <= 2100; y++) arr.push(y);
     return arr;
   },
+
   initLunarToToday(y, m, d) {
     const l = solarToLunar(y, m, d);
     if (l) this.applyLunar(l.year, l.month, l.leap, l.day);
   },
-  // 依据农历年月日，构建三级选择器状态
+
   applyLunar(year, month, leap, day) {
     const years = this.yearList();
     const months = lunarMonthsOfYear(year);
@@ -208,14 +195,10 @@ Page({
     const yIdx = Math.max(0, years.indexOf(year));
     const mIdx = Math.max(0, months.findIndex((q) => q.month === month && q.leap === !!leap));
     const dIdx = Math.max(0, Math.min(day - 1, days.length - 1));
-    // 农历 → 公历 正向反查预览（教学/对照用）
     let lunarPreview = '';
     try {
       const r = lunarToSolar(year, month, !!leap, day);
-      if (r) {
-        const p = (n) => String(n).padStart(2, '0');
-        lunarPreview = `${r.year} 年 ${p(r.month)} 月 ${p(r.day)} 日`;
-      }
+      if (r) lunarPreview = `${r.year} 年 ${pad(r.month)} 月 ${pad(r.day)} 日`;
     } catch (e) { /* 预览失败不阻塞选择 */ }
     this.setData({
       lunarYearList: years,
@@ -227,36 +210,31 @@ Page({
       lunarLabel: `${year}年${(leap ? '闰' : '')}${MONTH_CN[month]}月${DAY_CN[day] || day}`,
     });
   },
+
   onLunarColumnChange(e) {
     const col = e.detail.column, v = e.detail.value;
-    let value = this.data.lunarValue;
-    value = value.slice();
+    const value = this.data.lunarValue.slice();
     value[col] = v;
     const years = this.data.lunarYearList;
     const ySel = years[value[0]] || years[0];
     this.setData({ lunarValue: value });
     if (col === 0) {
-      // 年变 → 重建月
       const months = lunarMonthsOfYear(ySel);
-      const m = months[0];
-      const days = this.daysFor(ySel, m.month, m.leap);
-      this.setData({
-        lunarMonthLabels: months.map((x) => x.label),
-        lunarDayList: days,
-        lunarValue: [value[0], 0, 0],
-      });
+      const mm = months[0];
+      const days = this.daysFor(ySel, mm.month, mm.leap);
+      this.setData({ lunarMonthLabels: months.map((x) => x.label), lunarDayList: days, lunarValue: [value[0], 0, 0] });
     } else if (col === 1) {
       const months = this.currentMonthsOf(ySel);
-      const m = months[Math.min(value[1], months.length - 1)];
-      const days = this.daysFor(ySel, m.month, m.leap);
+      const mm = months[Math.min(value[1], months.length - 1)];
+      const days = this.daysFor(ySel, mm.month, mm.leap);
       this.setData({ lunarDayList: days, lunarValue: [value[0], value[1], 0] });
     }
   },
+
   currentMonthsOf(y) {
-    // 临时制作 month 候选（列已经是设置过的）
     return this.data.lunarMonthLabels.length ? this.labelsToMonths(y, this.data.lunarMonthLabels) : lunarMonthsOfYear(y);
   },
-  // months 候选：由 label 重建 month/leap 结构（用于 column1 变动后取 day 列表）
+
   labelsToMonths(y, labels) {
     const full = lunarMonthsOfYear(y);
     const out = [];
@@ -266,33 +244,29 @@ Page({
     }
     return out;
   },
+
   daysFor(year, month, leap) {
     const dim = lunarDaysOfMonth(year, month, !!leap);
     const arr = [];
     for (let i = 1; i <= dim; i++) arr.push(DAY_CN[i] || String(i));
     return arr;
   },
+
   onLunarChange(e) {
     const v = e.detail.value;
     const years = this.data.lunarYearList;
     const y = years[v[0]];
     const months = lunarMonthsOfYear(y);
-    const m = months[Math.min(v[1], months.length - 1)];
+    const mm = months[Math.min(v[1], months.length - 1)];
     const day = v[2] + 1;
-    this.applyLunar(y, m.month, m.leap, day);
+    this.applyLunar(y, mm.month, mm.leap, day);
     this.setData({ calMode: 'lunar', hasResult: false, result: null });
   },
 
-  // ============ 出生时间 ============
-  // 「我知道出生时间」开关：关闭即回退到「时辰未知」，不伪造时刻
   onTimeKnownChange(e) {
     const known = !!(e.detail && e.detail.value);
     if (!known) {
-      this.setData({
-        timeUnknown: true, hour: -1, minute: 0,
-        hourLabel: '时辰未知', shichenHint: '',
-        hasResult: false, result: null,
-      });
+      this.setData({ timeUnknown: true, hour: -1, minute: 0, hourLabel: '时辰未知', shichenHint: '', hasResult: false, result: null });
       return;
     }
     const seg = String(this.data.preciseTime || '12:00').split(':');
@@ -301,7 +275,6 @@ Page({
     this.setTime(Number.isFinite(h) ? h : 12, Number.isFinite(m) ? m : 0);
   },
 
-  // 原生 time 选择器变更（value 形如 "14:30"）
   onTimeChange(e) {
     const seg = String(e.detail.value || '12:00').split(':');
     const h = parseInt(seg[0], 10);
@@ -310,7 +283,6 @@ Page({
     this.setTime(h, Number.isFinite(m) ? m : 0);
   },
 
-  // 单一时间源：时分 → 内部 hour/minute + 回显 + 十二时辰推导提示
   setTime(h, m) {
     const hh = Math.min(23, Math.max(0, Math.round(h)));
     const mm = Math.min(59, Math.max(0, Math.round(m)));
@@ -322,95 +294,99 @@ Page({
       preciseTime: `${pad2(hh)}:${pad2(mm)}`,
       hourLabel: `${pad2(hh)}:${pad2(mm)}`,
       shichenHint: `${s.name}（${s.range}）`,
-      hasResult: false, result: null,
+      hasResult: false,
+      result: null,
     });
   },
 
-  // 性别选择（不影响历法计算，仅存档展示）
   onGenderTap(e) {
     this.setData({ gender: e.currentTarget.dataset.g, hasResult: false, result: null });
   },
 
-  // ============ 出生地点 ============
-  // 直辖市/特别行政区：城市列只有“市本级”，应隐藏“选市”步骤，直接 省→区县 两级。
   isMunicipal(prov) {
     const cn = cityNames(prov);
     return cn.length === 1 && cn[0] === prov;
   },
+
   initPlace() {
-    // 默认北京市
     const provIdx = Math.max(0, PROVINCE_NAMES.indexOf('北京市'));
     this.setData({ provIdx });
     this.setCityList();
   },
+
   setCityList() {
     const prov = PROVINCE_NAMES[this.data.provIdx];
     const cn = cityNames(prov);
     const municipal = this.isMunicipal(prov);
     this.setData({ cityNames: cn, cityIdx: 0, placeMode: municipal ? 'municipal' : 'province' });
     if (municipal) {
-      // 直辖市：市本级即市本身，直接把区县列拿满
       const dn = districtNames(prov, prov);
       this.setData({ districtNames: dn.length ? dn : [prov], districtIdx: 0 });
-      this.applyPlace();
     } else {
       this.setData({ districtNames: this.childDistricts(prov), districtIdx: 0 });
-      this.applyPlace();
     }
+    this.applyPlace();
   },
+
   onProvChange(e) {
-    const idx = Number(e.detail.value);
-    this.setData({ provIdx: idx });
+    this.setData({ provIdx: Number(e.detail.value) });
     this.setCityList();
   },
+
   onCityChange(e) {
-    const idx = Number(e.detail.value);
-    this.setData({ cityIdx: idx });
+    this.setData({ cityIdx: Number(e.detail.value) });
     this.setDistrictList();
   },
+
   childDistricts(prov) {
     const city = this.data.cityNames[this.data.cityIdx] || this.data.cityNames[0];
     const dn = districtNames(prov, city);
     return dn.length ? dn : [city];
   },
+
   setDistrictList() {
     const prov = PROVINCE_NAMES[this.data.provIdx];
     this.setData({ districtNames: this.childDistricts(prov), districtIdx: 0 });
     this.applyPlace();
   },
+
   onDistrictChange(e) {
     this.setData({ districtIdx: Number(e.detail.value) });
     this.applyPlace();
   },
-  applyPlace() {
+
+  currentPlaceSelection() {
     const prov = PROVINCE_NAMES[this.data.provIdx];
     const municipal = this.data.placeMode === 'municipal';
-    // 直辖市：城市 = 省份本身；普通省：城市 = 所选市
     const city = municipal ? prov : (this.data.cityNames[this.data.cityIdx] || this.data.cityNames[0]);
-    const district = this.data.districtNames[this.data.districtIdx];
-    const place = locateProvinceCity(prov, city, district);
+    const district = this.data.districtNames[this.data.districtIdx] || city;
+    return { prov, city, district, municipal };
+  },
+
+  applyPlace() {
+    const sel = this.currentPlaceSelection();
+    const place = locateProvinceCity(sel.prov, sel.city, sel.district);
     if (!place) return;
     const dName = place.district && place.district !== place.city ? '·' + place.district : '';
     this.setData({
       placeValid: true,
       placeLon: place.lng,
       placeLat: place.lat,
-      placeCityText: municipal ? '' : place.city,
-      placeLabel: `${place.prov} ${municipal ? '' : place.city}${dName}`.replace(/\s+$/, ''),
-      placeHint: `东经 ${place.lng.toFixed(1)}° · 北纬 ${place.lat.toFixed(1)}°`,
+      placeCityText: sel.municipal ? '' : place.city,
+      placeLabel: `${place.prov} ${sel.municipal ? '' : place.city}${dName}`.replace(/\s+$/, ''),
+      placeHint: `计算坐标按所属地级行政中心近似：东经 ${place.lng.toFixed(1)}° · 北纬 ${place.lat.toFixed(1)}°`,
       lonActive: false,
-      hasResult: false, result: null,
+      hasResult: false,
+      result: null,
     });
   },
 
-  // 高级：手动经度
   onToggleAdvanced() {
     this.setData({ showAdvanced: !this.data.showAdvanced });
-    if (!this.data.showAdvanced && this.data.lonActive) {
-      // 收起高级不改动已手填的经度
-    }
   },
+
   onLongitudeInput(e) { this.setData({ lonText: e.detail.value }); },
+
   onApplyLon() {
     const v = Number((this.data.lonText || '').trim());
     if (!Number.isFinite(v) || v < 73 || v > 135) {
@@ -418,17 +394,17 @@ Page({
       if (this.data.lonText) wx.showToast({ title: '请输入东经 73–135°', icon: 'none' });
       return;
     }
-      this.setData({
-        lonActive: true,
-        placeLon: v,
-        placeLat: null,
-        placeLabel: '手动经度',
-        placeHint: `东经 ${v}°`,
-        hasResult: false, result: null,
-      });
+    this.setData({
+      lonActive: true,
+      placeLon: v,
+      placeLat: null,
+      placeLabel: '手动经度',
+      placeHint: `按手动经度东经 ${v}° 计算真太阳时`,
+      hasResult: false,
+      result: null,
+    });
   },
 
-  // ============ 今日天时 ============
   buildToday(y, m, d) {
     try {
       const f = computeArchive(y, m, d);
@@ -436,7 +412,7 @@ Page({
         + (f.four.month ? f.four.month.ganz : '—') + '月 '
         + (f.four.day ? f.four.day.ganz : '—') + '日';
       const term = f.term.next;
-      const sun = sunTimes(y, m, d, 116.4074, 39.9042); // 今日天时默认本地（北京）
+      const sun = sunTimes(y, m, d, 116.4074, 39.9042);
       this.setData({
         today: {
           ganzhi,
@@ -457,20 +433,19 @@ Page({
       this.setData({ today: null });
     }
   },
+
   refreshClock() {
     if (!this.data.today) return;
-    const now = new Date();
-    this.setData({
-      'today.nowText': `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-    });
+    const now = beijingNowParts();
+    this.setData({ 'today.nowText': `${pad(now.hour)}:${pad(now.minute)}` });
   },
 
-  // ============ 生成 ============
   finalizeLon() {
     if (this.data.lonActive) return this.data.placeLon;
     if (this.data.placeValid) return this.data.placeLon;
     return null;
   },
+
   resolveDateInput() {
     if (this.data.calMode === 'lunar') {
       const s = this.data.lunarSel;
@@ -482,51 +457,93 @@ Page({
     const parts = (this.data.solarDate || '').split('-').map((n) => parseInt(n, 10));
     return (parts[0] && parts[1] && parts[2]) ? { y: parts[0], m: parts[1], d: parts[2], lunarText: '' } : null;
   },
+
   onGenerate() {
     if (this.data.generating || this.__wheel) return;
     const input = this.resolveDateInput();
     if (!input) { wx.showToast({ title: '请检查出生日期', icon: 'none' }); return; }
     const lon = this.finalizeLon();
-    // 分钟直接来自「出生时间」选择器（14:30 → 14.5 小时），引擎按连续时刻做真太阳时与时辰判定
+
+    if (!this.data.timeUnknown && this.data.hour >= 0) {
+      const probe = resolveChinaCivilTime(input.y, input.m, input.d, this.data.hour, this.data.minute, null);
+      if (!probe.ok && probe.reason === 'dst_gap') {
+        wx.showModal({
+          title: '历史夏令时缺口',
+          content: `${input.y}年该日曾实行夏时制，你填写的 ${this.data.hourLabel} 位于拨快跳过的时间段，历史钟表上不存在。请返回修改出生时间。`,
+          showCancel: false,
+          confirmText: '返回修改',
+        });
+        return;
+      }
+      if (!probe.ok && probe.needsFoldChoice) {
+        this.__wheel = true;
+        wx.showActionSheet({
+          itemList: ['第一次出现（夏令时）', '第二次出现（标准时）'],
+          success: (r) => {
+            this.__wheel = false;
+            this.generateResolvedArchive(input, lon, r.tapIndex === 0 ? 'earlier' : 'later');
+          },
+          fail: () => { this.__wheel = false; },
+        });
+        return;
+      }
+    }
+
+    this.generateResolvedArchive(input, lon, null);
+  },
+
+  generateResolvedArchive(input, lon, foldChoice) {
     const minute = this.data.timeUnknown ? 0 : this.data.minute;
-    const hour = this.data.hour >= 0 ? this.data.hour + minute / 60 : -1;
-    // —— 单一时间事实源：整个生成链路只在这里计算一次 ——
+    const sourceHour = this.data.hour >= 0 ? this.data.hour + minute / 60 : -1;
+    let calcInput = input;
+    let calcHour = sourceHour;
+    let civil = null;
+
+    if (sourceHour >= 0) {
+      civil = resolveChinaCivilTime(input.y, input.m, input.d, this.data.hour, minute, foldChoice);
+      if (!civil.ok) {
+        wx.showToast({ title: '历史时间无法唯一确定', icon: 'none' });
+        return;
+      }
+      calcInput = { ...input, y: civil.y, m: civil.m, d: civil.d };
+      calcHour = civil.hourDecimal;
+    }
+
     let f = null;
     try {
-      f = computeArchive(input.y, input.m, input.d, hour, lon);
+      f = computeArchive(calcInput.y, calcInput.m, calcInput.d, calcHour, lon);
     } catch (e) {
-      // engine 只在年份越界时抛 `range <year>`（engine.js:38）；其余异常不能谎报成年份问题
       const msg = String((e && e.message) || '');
       console.error('[archive] computeArchive 失败：', msg);
       wx.showToast({ title: /^range\s/.test(msg) ? '仅支持 1900-2100 年' : '生成失败请重试', icon: 'none' });
       return;
     }
 
-    // 真太阳时跨时辰/跨日确认：仅当「已知时辰 + 提供了经度」时评估。
-    // 跨日/跨时辰时先用 Modal 让用户确认，确认后再按同一份 f 生成（不重复计算）。
-    if (hour >= 0 && Number.isFinite(lon) && f.trueSolar
+    if (calcHour >= 0 && Number.isFinite(lon) && f.trueSolar
       && f.trueSolar.canonHour != null && !f.trueSolar.degraded) {
       const dayChanged = f.trueSolar.dayChanged;
-      const rawIdx = shichenIndexOfHour(hour);
+      const rawIdx = shichenIndexOfHour(calcHour);
       const corIdx = shichenIndexOfHour(f.trueSolar.canonHour);
       const timeChanged = corIdx !== rawIdx;
       if (dayChanged || timeChanged) {
-        const oldDp = dayPillar(gregorianToJde(input.y, input.m, input.d));
-        const oldHp = hourPillar(oldDp.index % 10, hour);
-        const newDp = f.four.day; const newHp = f.four.hour;
-        // 结构化：只列真实变化的柱（日柱/时柱），其余不显示
+        const oldDp = dayPillar(gregorianToJde(calcInput.y, calcInput.m, calcInput.d));
+        const oldHp = hourPillar(oldDp.index % 10, calcHour);
+        const newDp = f.four.day;
+        const newHp = f.four.hour;
         const pieces = [];
         if (f.dayShift !== 0 && newDp.ganz !== oldDp.ganz) pieces.push(`日柱：${oldDp.ganz} → ${newDp.ganz}`);
-        else if (f.dayShift !== 0) pieces.push(`日历日：${input.y}-${input.m}-${input.d} → ${f.trueSolar.canonDateText}`);
+        else if (f.dayShift !== 0) pieces.push(`日历日：${calcInput.y}-${calcInput.m}-${calcInput.d} → ${f.trueSolar.canonDateText}`);
         if (newHp && oldHp && newHp.ganz !== oldHp.ganz) pieces.push(`时柱：${oldHp.ganz} → ${newHp.ganz}`);
         if (pieces.length === 0 && corIdx !== rawIdx) pieces.push(`时辰：${SHICHEN[rawIdx].name} → ${SHICHEN[corIdx].name}`);
         const title = dayChanged ? '真太阳时校正跨日' : '时辰变更提示';
         const offTxt = `${f.trueSolar.offsetMinutes > 0 ? '+' : ''}${f.trueSolar.offsetMinutes} 分钟`;
+        const dstHead = civil && civil.dstApplied
+          ? `出生钟表：${input.y}年${input.m}月${input.d}日 ${this.data.hourLabel}（夏时制）\n标准北京时间：${civil.y}-${pad(civil.m)}-${pad(civil.d)} ${pad(civil.hour)}:${pad(civil.minute)}\n`
+          : '';
         const bodyHead = dayChanged
-          ? `原始时间：${input.y}年${input.m}月${input.d}日 ${this.data.hourLabel}\n真太阳时：进入${f.trueSolar.canonDateText} ${SHICHEN[corIdx].range}\n`
-          : `您选择的出生时刻 ${this.data.hourLabel}（${SHICHEN[rawIdx].name}），经真太阳时修正（${offTxt}）后，实际天文时辰为 ${SHICHEN[corIdx].name}（${SHICHEN[corIdx].range}）。\n`;
-        const content = bodyHead
-          + (pieces.length ? '本档案将按真太阳时重新计算相关干支。\n\n' + pieces.join('\n') : '');
+          ? `${dstHead}真太阳时：进入${f.trueSolar.canonDateText} ${SHICHEN[corIdx].range}\n`
+          : `${dstHead}经真太阳时修正（${offTxt}）后，天文时辰为 ${SHICHEN[corIdx].name}（${SHICHEN[corIdx].range}）。\n`;
+        const content = bodyHead + (pieces.length ? '本档案将按校正后的时刻计算相关干支。\n\n' + pieces.join('\n') : '');
         this.__wheel = true;
         wx.showModal({
           title,
@@ -535,31 +552,24 @@ Page({
           cancelText: '返回修改',
           success: (r) => {
             this.__wheel = false;
-            if (!r.confirm) return; // 返回修改：不生成，留在表单
+            if (!r.confirm) return;
             this.setData({ generating: true });
-            try {
-              this.commitResult(input, lon, f);
-            } finally {
-              this.setData({ generating: false });
-            }
+            try { this.commitResult(input, lon, f, civil); } finally { this.setData({ generating: false }); }
           },
           fail: () => { this.__wheel = false; },
         });
         return;
       }
     }
+
     this.setData({ generating: true });
-    try {
-      this.commitResult(input, lon, f);
-    } finally {
-      this.setData({ generating: false });
-    }
+    try { this.commitResult(input, lon, f, civil); } finally { this.setData({ generating: false }); }
   },
-  commitResult(input, lon, f) {
+
+  commitResult(input, lon, f, civil) {
     lon = lon != null ? lon : this.finalizeLon();
     const { y, m, d } = input;
     try {
-      // 四柱固定为 4 列：年/月/日/时。时辰未知时，时柱以弱化的“— / 时辰未知”占位。
       const hourP = f.four.hour;
       const pillars = [
         { key: 'year', label: '年柱', ganz: f.four.year ? f.four.year.ganz : '—', element: f.four.year ? ELEM_NAME[f.four.year.element] : '' },
@@ -567,16 +577,16 @@ Page({
         { key: 'day', label: '日柱', ganz: f.four.day ? f.four.day.ganz : '—', element: f.four.day ? ELEM_NAME[f.four.day.element] : '' },
         { key: 'hour', label: '时柱', ganz: hourP ? hourP.ganz : '—', element: hourP ? ELEM_NAME[hourP.element] : '', unknown: !hourP },
       ];
-      // 五行分布固定为 5 行：木火土金水，0 值也展示（弱化）。
       const tallyOrder = ['wood', 'fire', 'earth', 'metal', 'water'];
       const tallyRaw = tallyOrder.map((k) => ({ key: k, name: ELEM_NAME[k], n: (f.tally[k] || 0) }));
       const tallyMax = Math.max(1, ...tallyRaw.map((x) => x.n));
-      const tally = tallyRaw.map((x) => ({
-        ...x,
-        pct: Math.round((x.n / tallyMax) * 100),
-        empty: x.n === 0,
-      }));
+      const tally = tallyRaw.map((x) => ({ ...x, pct: Math.round((x.n / tallyMax) * 100), empty: x.n === 0 }));
       const termNow = f.term.next ? `${f.term.next.name} ${fmtTermDate(f.term.next.utc)}` : '—';
+      const approxCoord = lon != null && !this.data.lonActive
+        ? `东经 ${Number(this.data.placeLon).toFixed(1)}° · 北纬 ${Number(this.data.placeLat).toFixed(1)}°（地级行政中心近似）`
+        : (lon != null ? fmtLng(lon) : '');
+      const standardBjTime = civil && !civil.unknown && (civil.dstApplied || civil.state === 'FOLD')
+        ? `${civil.y}-${pad(civil.m)}-${pad(civil.d)} ${pad(civil.hour)}:${pad(civil.minute)}` : null;
       const result = {
         solar: `${y}-${pad(m)}-${pad(d)}`,
         solarCN: `${y}年${m}月${d}日`,
@@ -584,12 +594,8 @@ Page({
         lunarText: this.data.calMode === 'lunar' ? (input.lunarText || '') : (f.lunar ? f.lunar.text : ''),
         lunarApprox: f.lunar ? !!f.lunar.approx : false,
         hasPlace: lon != null,
-        placeName: (lon != null)
-          ? (this.data.lonActive ? '手动经度' : this.data.placeLabel)
-          : '请选择出生地点（跳过真太阳时修正）',
-        placeCoord: (lon != null && !this.data.lonActive)
-          ? `东经 ${Number(this.data.placeLon).toFixed(1)}° · 北纬 ${Number(this.data.placeLat).toFixed(1)}°`
-          : (lon != null ? fmtLng(lon) : ''),
+        placeName: (lon != null) ? (this.data.lonActive ? '手动经度' : this.data.placeLabel) : '未提供出生地点（跳过真太阳时修正）',
+        placeCoord: approxCoord,
         pillars,
         hourUnknown: !hourP,
         tally,
@@ -601,6 +607,11 @@ Page({
         moonLit: f.moon ? litMoon(f.moon.ageDays) : null,
         trueSolar: f.trueSolar.degraded ? '未提供地点' : fmtTrueSolarMinutes(f.trueSolar.offsetMinutes),
         bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:${pad(this.data.minute)}` : null,
+        clockTimeLabel: civil && civil.dstApplied ? '出生钟表时间（夏时制）' : '出生时间（北京时间）',
+        standardBjTime,
+        dstNote: civil && civil.state === 'FOLD'
+          ? `该时刻处于夏时制结束的重复区间，本次采用${civil.foldChoice === 'earlier' ? '第一次（夏令时）' : '第二次（标准时）'}。`
+          : (civil && civil.dstApplied ? '该出生时刻处于 1986–1991 中国夏时制实施期，计算前已换算为标准北京时间。' : ''),
         tsDateTime: (f.trueSolar && f.trueSolar.canonHour != null && !f.trueSolar.degraded)
           ? (f.trueSolar.dayChanged
             ? `${f.trueSolar.canonDateText} ${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`
@@ -614,41 +625,61 @@ Page({
             : this.data.hourLabel)
           : '时辰未知',
       };
-      // 生成结果新到独立「历法档案」页；返回后可继续修改参数。
-      this.saveHistory(f, input, lon);
+      this.saveHistory(f, input, lon, civil);
       wx.navigateTo({
         url: '/pages/result/result',
-        success: (res) => {
-          if (res && res.eventChannel) res.eventChannel.emit('archive', { result });
-        },
+        success: (res) => { if (res && res.eventChannel) res.eventChannel.emit('archive', { result }); },
       });
     } catch (err) {
-      // 保存历史 / 跳转结果页阶段：年份范围在上一处已校验过，这里不该再谎报成年份问题
       console.error('[archive] commitResult 失败：', (err && err.message) || err);
       wx.showToast({ title: '生成失败请重试', icon: 'none' });
     }
   },
 
-  // ============ 说明 ============
   onWhyPlace() {
     wx.showModal({
       title: '为什么需要出生地点？',
-      content: '不同经度地区的太阳运行时间存在差异。系统按出生地经度，结合均时差（EoT）与经度时差（±4 分钟/度，相对东经 120°）计算真太阳时，用于校准地方太阳时。',
+      content: '不同经度地区的太阳时不同。系统按出生地经度结合均时差与经度时差计算真太阳时。当前区/县用于名称选择，内置计算坐标采用所属地级行政中心近似值；若出生地接近时辰边界，可在高级设置中手动填写更准确的经度。',
       showCancel: false,
       confirmText: '知道了',
     });
   },
+
   onTodayInfo() {
     wx.showModal({
-      title: '今日天时',
-      content: '根据真实天文历法计算当日干支、节气节点、日出日落时间，展示历法计算能力。',
+      title: '今日天时（北京口径）',
+      content: '日期、当前时间与日出日落统一采用北京时间 / 北京坐标口径，避免设备位于其他时区时产生混合语义。',
       showCancel: false,
     });
   },
 
-  // 本地历史存档（P0-5 基础版：仅本地，无云端依赖；含隐私数据说明）
-  saveHistory(f, input, lon) {
+  buildArchiveInputSnapshot(input, lon, civil) {
+    const place = this.currentPlaceSelection();
+    return {
+      version: 2,
+      calMode: this.data.calMode,
+      solar: `${input.y}-${pad(input.m)}-${pad(input.d)}`,
+      lunarSel: this.data.calMode === 'lunar' && this.data.lunarSel ? { ...this.data.lunarSel } : null,
+      hour: this.data.hour,
+      minute: this.data.timeUnknown ? 0 : this.data.minute,
+      timeUnknown: !!this.data.timeUnknown,
+      gender: this.data.gender,
+      foldChoice: civil && civil.state === 'FOLD' ? civil.foldChoice : null,
+      place: {
+        manual: !!this.data.lonActive,
+        lonText: this.data.lonText || '',
+        longitude: lon,
+        latitude: this.data.lonActive ? null : this.data.placeLat,
+        prov: place.prov,
+        city: place.city,
+        district: place.district,
+      },
+    };
+  },
+
+  saveHistory(f, input, lon, civil) {
     const { y, m, d } = input;
+    const archiveInput = this.buildArchiveInputSnapshot(input, lon, civil);
     const rec = {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       createdAt: new Date().toISOString(),
@@ -660,15 +691,16 @@ Page({
       gender: this.data.gender,
       placeLabel: (lon != null && this.data.placeLabel) ? this.data.placeLabel : '未选择地点',
       placeCoord: (lon != null && !this.data.lonActive)
-        ? `东经 ${Number(this.data.placeLon).toFixed(1)}° · 北纬 ${Number(this.data.placeLat).toFixed(1)}°`
+        ? `东经 ${Number(this.data.placeLon).toFixed(1)}° · 北纬 ${Number(this.data.placeLat).toFixed(1)}°（地级行政中心近似）`
         : (lon != null ? fmtLng(lon) : ''),
       hour: this.data.hour,
       hourLabel: this.data.hourLabel,
-      // 时间单一源：已知=时分直输，未知=「时辰未知」占位（timeUnknown 供旧记录兼容回读）
       timeUnknown: !!this.data.timeUnknown,
       minute: this.data.timeUnknown ? 0 : this.data.minute,
-      // 真太阳时跨日/修正（单一时间源，重新打开不改算）
+      archiveInput,
       bjTime: this.data.hour >= 0 ? `${pad(this.data.hour)}:${pad(this.data.minute)}` : null,
+      standardBjTime: civil && !civil.unknown && (civil.dstApplied || civil.state === 'FOLD')
+        ? `${civil.y}-${pad(civil.m)}-${pad(civil.d)} ${pad(civil.hour)}:${pad(civil.minute)}` : null,
       tsDateTime: (f.trueSolar && !f.trueSolar.degraded && f.trueSolar.canonHour != null)
         ? (f.trueSolar.dayChanged
           ? `${f.trueSolar.canonDateText} ${pad(Math.floor(f.trueSolar.canonHour))}:${pad(Math.round((f.trueSolar.canonHour % 1) * 60))}`
@@ -678,39 +710,92 @@ Page({
       crossDay: !!(f.trueSolar && f.trueSolar.dayChanged),
     };
     try {
-      const list = wx.getStorageSync(HISTORY_KEY) || [];
-      // 同一份档案（日期 + 时刻 + 地点）重复生成只保留最新一条，避免列表堆成重复卡片；
-      // 旧记录可能缺 minute，统一按 0 归一后再比。
-      const sig = (x) => `${x.solar}|${x.hour}|${Number.isFinite(x.minute) ? x.minute : 0}|${x.placeCoord || ''}`;
+      let list = wx.getStorageSync(HISTORY_KEY) || [];
+      if (!list.length) list = wx.getStorageSync(LEGACY_HISTORY_KEY) || [];
+      const sig = (x) => `${x.solar}|${x.hour}|${Number.isFinite(x.minute) ? x.minute : 0}|${x.placeCoord || ''}|${x.gender || ''}`;
       const s = sig(rec);
       const rest = list.filter((x) => sig(x) !== s);
       rest.unshift(rec);
-      const trimmed = rest.slice(0, MAX_HISTORY);
-      wx.setStorageSync(HISTORY_KEY, trimmed);
-    } catch (e) { /* 存储失败静默，不影响本次生成 */ }
+      wx.setStorageSync(HISTORY_KEY, rest.slice(0, MAX_HISTORY));
+    } catch (e) { /* 存储失败不影响本次生成 */ }
   },
 
-  goHistory() {
-    wx.navigateTo({ url: '/pages/history/history' });
-  },
+  goHistory() { wx.navigateTo({ url: '/pages/history/history' }); },
+  goToday() { wx.navigateTo({ url: '/pages/today/today' }); },
+  goTerms() { wx.navigateTo({ url: '/pages/terms/terms' }); },
 
-  goToday() {
-    wx.navigateTo({ url: '/pages/today/today' });
-  },
-
-  goTerms() {
-    wx.navigateTo({ url: '/pages/terms/terms' });
-  },
-
-  // 由今日页“以今日作为出生档案日期”回填
   applyToday(solar) {
     if (!solar) return;
     this.setData({ calMode: 'solar', solarDate: solar, solarDateLabel: solar, hasResult: false, result: null });
   },
 
-  // 由历史页“重新生成”回填日期与性别
   applyHistory(r) {
     if (!r) return;
+    const a = r.archiveInput;
+    if (a && a.version === 2) {
+      const set = {
+        calMode: a.calMode === 'lunar' && a.lunarSel ? 'lunar' : 'solar',
+        solarDate: a.solar || r.solar,
+        solarDateLabel: a.solar || r.solar,
+        gender: a.gender === '女' ? '女' : '男',
+        timeUnknown: !!a.timeUnknown,
+        hour: a.timeUnknown ? -1 : a.hour,
+        minute: a.timeUnknown ? 0 : a.minute,
+        preciseTime: a.timeUnknown ? '12:00' : `${pad2(a.hour)}:${pad2(a.minute)}`,
+        hourLabel: a.timeUnknown ? '时辰未知' : `${pad2(a.hour)}:${pad2(a.minute)}`,
+        shichenHint: a.timeUnknown ? '' : `${SHICHEN[shichenIndexOfHour(a.hour)].name}（${SHICHEN[shichenIndexOfHour(a.hour)].range}）`,
+        hasResult: false,
+        result: null,
+      };
+
+      const p = a.place || {};
+      if (p.manual && Number.isFinite(p.longitude)) {
+        Object.assign(set, {
+          lonActive: true,
+          lonText: p.lonText || String(p.longitude),
+          placeLon: p.longitude,
+          placeLat: null,
+          placeValid: true,
+          placeLabel: '手动经度',
+          placeHint: `按手动经度东经 ${p.longitude}° 计算真太阳时`,
+        });
+      } else if (p.prov && PROVINCE_NAMES.includes(p.prov)) {
+        const provIdx = PROVINCE_NAMES.indexOf(p.prov);
+        const cn = cityNames(p.prov);
+        const municipal = cn.length === 1 && cn[0] === p.prov;
+        const cityIdx = Math.max(0, cn.indexOf(municipal ? p.prov : p.city));
+        const city = municipal ? p.prov : (cn[cityIdx] || cn[0]);
+        const rawDn = districtNames(p.prov, city);
+        const dn = rawDn.length ? rawDn : [city];
+        const districtIdx = Math.max(0, dn.indexOf(p.district));
+        const district = dn[districtIdx] || dn[0];
+        const place = locateProvinceCity(p.prov, city, district);
+        if (place) {
+          const dName = place.district && place.district !== place.city ? '·' + place.district : '';
+          Object.assign(set, {
+            provIdx, cityNames: cn, cityIdx,
+            placeMode: municipal ? 'municipal' : 'province',
+            districtNames: dn, districtIdx,
+            placeValid: true,
+            placeLon: place.lng,
+            placeLat: place.lat,
+            placeLabel: `${place.prov} ${municipal ? '' : place.city}${dName}`.replace(/\s+$/, ''),
+            placeHint: `计算坐标按所属地级行政中心近似：东经 ${place.lng.toFixed(1)}° · 北纬 ${place.lat.toFixed(1)}°`,
+            lonActive: false,
+            lonText: '',
+          });
+        }
+      }
+
+      this.setData(set, () => {
+        if (a.calMode === 'lunar' && a.lunarSel) {
+          this.applyLunar(a.lunarSel.year, a.lunarSel.month, !!a.lunarSel.leap, a.lunarSel.day);
+          this.setData({ calMode: 'lunar' });
+        }
+      });
+      return;
+    }
+
     const set = {};
     if (r.solar && /^\d{4}-\d{2}-\d{2}$/.test(r.solar)) {
       set.calMode = 'solar';
@@ -718,16 +803,13 @@ Page({
       set.solarDateLabel = r.solar;
     }
     if (r.gender === '男' || r.gender === '女') set.gender = r.gender;
-    // 恢复出生时间，让“重新生成”与历史记录保持一致（时间单一源）。
-    // 旧记录两种都换算成 时:分 直填：timeMode='precise' 带分钟，'shichen' 只有时辰槽起点；
-    // 未知时刻（hour<0）回到「不知道出生时间」开关。
     if (Number.isInteger(r.hour) && r.hour >= 0 && r.hour < 24) {
-      const m = (Number.isInteger(r.minute) && r.minute >= 0 && r.minute < 60) ? r.minute : 0;
+      const mm = (Number.isInteger(r.minute) && r.minute >= 0 && r.minute < 60) ? r.minute : 0;
       const s = SHICHEN[shichenIndexOfHour(r.hour)];
       set.timeUnknown = false;
       set.hour = r.hour;
-      set.minute = m;
-      set.preciseTime = `${pad2(r.hour)}:${pad2(m)}`;
+      set.minute = mm;
+      set.preciseTime = `${pad2(r.hour)}:${pad2(mm)}`;
       set.hourLabel = set.preciseTime;
       set.shichenHint = `${s.name}（${s.range}）`;
     } else {
@@ -742,8 +824,5 @@ Page({
     this.setData(set);
   },
 
-  // 打开“关于 / 免责声明“页面
-  goAbout() {
-    wx.navigateTo({ url: '/pages/about/about' });
-  },
+  goAbout() { wx.navigateTo({ url: '/pages/about/about' }); },
 });

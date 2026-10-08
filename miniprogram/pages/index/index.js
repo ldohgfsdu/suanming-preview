@@ -1,8 +1,7 @@
 // pages/index/index.js — 东方时间文化档案 首页。
 // 纯天文历法事实：时间、节气、干支、太阳时间、农历、五行字面计数。
 
-import { computeArchive, ELEMENT_NAME as ELEM_NAME, hourPillar } from '../../lib/archive.js';
-import { gregorianToJde, dayPillar } from '../../lib/engine.js';
+import { computeArchive, ELEMENT_NAME as ELEM_NAME } from '../../lib/archive.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { PROVINCE_NAMES, cityNames, districtNames, locateProvinceCity } from '../../lib/place.js';
 import { lunarToSolar, lunarMonthsOfYear, lunarDaysOfMonth } from '../../lib/lunarReverse.js';
@@ -526,20 +525,28 @@ Page({
       const corIdx = shichenIndexOfHour(f.trueSolar.canonHour);
       const timeChanged = corIdx !== rawIdx;
       if (dayChanged || timeChanged) {
-        const oldDp = dayPillar(gregorianToJde(calcInput.y, calcInput.m, calcInput.d));
-        const oldHp = hourPillar(oldDp.index % 10, calcHour);
-        // engine.dayPillar 返回 {gan,zhi,index}，hourPillar 返回 {gan,zhi,ganzhi}；
-        // 两者都没有 f.four.* 的 .ganz 字段，直接取会把「undefined」写进用户可见弹窗。
-        const oldDpGanz = oldDp.gan + oldDp.zhi;
-        const oldHpGanz = oldHp ? oldHp.ganzhi : null;
+        // 「校正前」基线必须同样走唯一事实源 computeArchive，只是不做经度修正（lon=null），
+        // 这样子时换日（23:00 CHANGE_AT_ZI）、五鼠遁等规则全部由 archive.js 统一负责，
+        // 不在 UI 层手算 dayPillar/hourPillar（那会绕过 23:00 日界，把旧日柱算错）。
+        let before = null;
+        try {
+          before = computeArchive(calcInput.y, calcInput.m, calcInput.d, calcHour, null);
+        } catch (e) {
+          console.warn('[archive] 基线计算失败：', String((e && e.message) || e));
+        }
+        const beforeDayGanz = before && before.four && before.four.day ? before.four.day.ganz : null;
+        const beforeHourGanz = before && before.four && before.four.hour ? before.four.hour.ganz : null;
         const newDp = f.four.day;
         const newHp = f.four.hour;
+        const dayPillarChanged = !!(beforeDayGanz && newDp && newDp.ganz !== beforeDayGanz);
         const pieces = [];
-        if (f.dayShift !== 0 && newDp.ganz !== oldDpGanz) pieces.push(`日柱：${oldDpGanz} → ${newDp.ganz}`);
-        else if (f.dayShift !== 0) pieces.push(`日历日：${calcInput.y}-${calcInput.m}-${calcInput.d} → ${f.trueSolar.canonDateText}`);
-        if (newHp && oldHpGanz && newHp.ganz !== oldHpGanz) pieces.push(`时柱：${oldHpGanz} → ${newHp.ganz}`);
+        if (dayPillarChanged) pieces.push(`日柱：${beforeDayGanz} → ${newDp.ganz}`);
+        else if (dayChanged) pieces.push(`日历日：${calcInput.y}-${calcInput.m}-${calcInput.d} → ${f.trueSolar.canonDateText}`);
+        if (newHp && beforeHourGanz && newHp.ganz !== beforeHourGanz) {
+          pieces.push(`时柱：${beforeHourGanz} → ${newHp.ganz}`);
+        }
         if (pieces.length === 0 && corIdx !== rawIdx) pieces.push(`时辰：${SHICHEN[rawIdx].name} → ${SHICHEN[corIdx].name}`);
-        const title = dayChanged ? '真太阳时校正跨日' : '时辰变更提示';
+        const title = (dayChanged || dayPillarChanged) ? '真太阳时校正跨日' : '时辰变更提示';
         const offTxt = `${f.trueSolar.offsetMinutes > 0 ? '+' : ''}${f.trueSolar.offsetMinutes} 分钟`;
         const dstHead = civil && civil.dstApplied
           ? `出生钟表：${input.y}年${input.m}月${input.d}日 ${this.data.hourLabel}（夏时制）\n标准北京时间：${civil.y}-${pad(civil.m)}-${pad(civil.d)} ${pad(civil.hour)}:${pad(civil.minute)}\n`

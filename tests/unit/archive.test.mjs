@@ -169,3 +169,28 @@ test('未知出生时刻不伪造时柱：年/月/日存在、时柱为 null', (
   assert.ok(u.four.day && u.four.day.ganz);
   assert.strictEqual(u.dayShift, 0);
 });
+// ---- 23 点日界基线（首页跨日弹窗「校正前」取值依赖这两个用例） ----
+test('23:30 墙钟不做经度修正时已按子时换日进入次日（弹窗基线）', () => {
+  const before = computeArchive(2023, 5, 4, 23.5, null);
+  assert.strictEqual(before.instant_day, '2023-05-05');
+  assert.strictEqual(before.four.day.ganz, '癸亥');
+  assert.strictEqual(before.four.hour.ganz, '壬子');
+});
+
+test('23:00@116.4 真太阳时退回前一天：日柱/时柱相对基线均变化（dayChanged 仍为 false）', () => {
+  const before = computeArchive(2023, 5, 4, 23, null);
+  const f = computeArchive(2023, 5, 4, 23, 116.4);
+  assert.strictEqual(before.four.day.ganz, '癸亥');
+  assert.strictEqual(before.four.hour.ganz, '壬子');
+  assert.strictEqual(f.four.day.ganz, '壬戌');
+  assert.strictEqual(f.four.hour.ganz, '辛亥');
+  assert.strictEqual(f.trueSolar.dayChanged, false, '未跨民用午夜，但确实跨了子时日界');
+});
+
+test('00:30@90° 跨日：基线仍为 05-04 壬戌，校正后退回 05-03 辛酉', () => {
+  const before = computeArchive(2023, 5, 4, 0.5, null);
+  const f = computeArchive(2023, 5, 4, 0.5, 90);
+  assert.strictEqual(before.four.day.ganz, '壬戌');
+  assert.strictEqual(f.four.day.ganz, '辛酉');
+  assert.strictEqual(f.trueSolar.dayChanged, true);
+});

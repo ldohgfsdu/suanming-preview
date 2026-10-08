@@ -14,6 +14,7 @@
 const crypto = require('node:crypto');
 const tcb = require('@cloudbase/node-sdk');
 const cloud = require('wx-server-sdk');
+const { extractJson, runModelAttempts } = require('./model-policy');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const tcbApp = tcb.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -28,6 +29,10 @@ const MODEL = process.env.INSIGHT_MODEL || 'deepseek-v4-flash';
 const FACTS_MAX_CHARS = 8000;
 const RATE_MINUTE_MAX = Number(process.env.INSIGHT_RATE_MINUTE_MAX || 6);
 const RATE_DAY_MAX = Number(process.env.INSIGHT_RATE_DAY_MAX || 40);
+// 用户请求配额与「真实模型调用」配额分开记：重试一次会让 1 次用户请求产生 2 次模型调用，
+// 只按用户请求计数会低估成本与限流压力。
+const MODEL_RATE_MINUTE_MAX = Number(process.env.INSIGHT_MODEL_RATE_MINUTE_MAX || 8);
+const MODEL_RATE_DAY_MAX = Number(process.env.INSIGHT_MODEL_RATE_DAY_MAX || 60);
 const CACHE_TTL_MS = Number(process.env.INSIGHT_CACHE_TTL_MS || 24 * 60 * 60 * 1000);
 const CACHE_MAX = Number(process.env.INSIGHT_CACHE_MAX || 128);
 
@@ -226,15 +231,27 @@ function checkRate(openid) {
   return { ok: true };
 }
 
-function extractJson(text) {
-  if (!text) return null;
-  let s = String(text).trim();
-  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fence) s = fence[1].trim();
-  const start = s.indexOf('{');
-  const end = s.lastIndexOf('}');
-  if (start >= 0 && end > start) s = s.slice(start, end + 1);
-  try { return JSON.parse(s); } catch (e) { return null; }
+// 模型调用次数配额：与用户请求配额分开记，重试一次 = 2 次模型调用。
+const MODEL_RATE = new Map();
+
+function checkModelRate(openid) {
+  const now = Date.now();
+  const day = new Date(now).toISOString().slice(0, 10);
+  const prev = MODEL_RATE.get(openid) || { minuteStart: now, minuteCount: 0, day, dayCount: 0 };
+  if (now - prev.minuteStart >= 60 * 1000) {
+    prev.minuteStart = now;
+    prev.minuteCount = 0;
+  }
+  if (prev.day !== day) {
+    prev.day = day;
+    prev.dayCount = 0;
+  }
+  if (prev.minuteCount >= MODEL_RATE_MINUTE_MAX) return { ok: false, reason: 'model_rate_minute' };
+  if (prev.dayCount >= MODEL_RATE_DAY_MAX) return { ok: false, reason: 'model_rate_day' };
+  prev.minuteCount += 1;
+  prev.dayCount += 1;
+  MODEL_RATE.set(openid, prev);
+  return { ok: true };
 }
 
 function requireKnownFacts(section, facts, errors) {
@@ -357,49 +374,58 @@ exports.main = async (event) => {
   const rate = checkRate(openid);
   if (!rate.ok) return jsonReply(false, { reason: rate.reason });
 
-  let hint = null;
-  let lastError = 'unknown';
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    let parsed = null;
-    try {
-      parsed = await callModel(facts, hint);
-    } catch (e) {
-      lastError = String((e && (e.message || e.errMsg)) || e || 'model_call_failed');
-      console.error('[insight] 模型调用失败：', lastError);
-      hint = 'model_call_failed';
-    }
-    const errors = guard(parsed, facts);
-    if (!errors.length && parsed) {
-      const insight = {
+  // 重试状态机在 model-policy.runModelAttempts：只有「模型成功返回但没过 Guard」
+  // 才带 repair hint 重试一次；429/配额/401/403 直接降级，不再立刻打第二次模型。
+  const attempt = await runModelAttempts({
+    callModel: (h) => callModel(facts, h),
+    guard: (p) => guard(p, facts),
+    quotaCheck: () => {
+      const q = checkModelRate(openid);
+      if (!q.ok) {
+        console.error('[insight] 模型调用配额用尽：', q.reason,
+          MODEL_RATE_MINUTE_MAX + '/min', MODEL_RATE_DAY_MAX + '/day');
+      }
+      return q;
+    },
+    // provider 原始报错只进服务端日志；客户端只拿 clientReason，避免把上游细节透出去。
+    onCallError: (cls, e) => {
+      console.error('[insight] 模型调用失败：', cls.kind, cls.status || '-',
+        String((e && (e.message || e.errMsg)) || e).slice(0, 300));
+    },
+    onGuardFail: (errors, n) => {
+      console.error('[insight] guard 未通过（第 ' + (n + 1) + ' 次）：', errors.join(','));
+    },
+  });
+
+  if (!attempt.ok) {
+    console.error('[insight] 降级兜底：reason=' + attempt.reason
+      + '，本次模型调用次数=' + attempt.modelCalls);
+    return jsonReply(true, {
+      insight: {
         outputVersion: OUTPUT_VERSION,
         docHash,
         model: MODEL,
         promptVer: PROMPT_VER,
-        sections: parsed.sections,
-        limitations: parsed.limitations,
-        usedEvidenceIds: parsed.sections.flatMap((s) => s.evidenceIds || []),
-        fallback: false,
-        cacheHit: false,
-      };
-      cachePut(key, insight);
-      return jsonReply(true, { insight });
-    }
-    // 模型没产出可校验对象时，guard 只会给出 not_object，会把真实模型错误盖掉；
-    // 只有拿到了对象却没过校验时，才用校验错误替换。
-    if (parsed) lastError = errors.join(',') || lastError;
-    if (attempt === 0) hint = lastError;
+        sections: [],
+        limitations: ['仅说明客观历法事实与文化背景'],
+        fallback: true,
+        reason: attempt.reason,
+      },
+    });
   }
 
-  return jsonReply(true, {
-    insight: {
-      outputVersion: OUTPUT_VERSION,
-      docHash,
-      model: MODEL,
-      promptVer: PROMPT_VER,
-      sections: [],
-      limitations: ['仅说明客观历法事实与文化背景'],
-      fallback: true,
-      reason: lastError,
-    },
-  });
+  const parsed = attempt.insight;
+  const insight = {
+    outputVersion: OUTPUT_VERSION,
+    docHash,
+    model: MODEL,
+    promptVer: PROMPT_VER,
+    sections: parsed.sections,
+    limitations: parsed.limitations,
+    usedEvidenceIds: parsed.sections.flatMap((s) => s.evidenceIds || []),
+    fallback: false,
+    cacheHit: false,
+  };
+  cachePut(key, insight);
+  return jsonReply(true, { insight });
 };

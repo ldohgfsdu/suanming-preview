@@ -3,6 +3,8 @@
 //   npm i -D miniprogram-automator   （或设 AUTOMATOR_PATH 指向含该包的 node_modules）
 //   微信开发者工具先开着项目，且「安全设置 → 服务端口 / CLI 调用」已开启
 //   node tests/e2e/wechat-e2e.mjs
+// 退出码：0 = 全 PASS；1 = 存在 FAIL（代码缺陷）；2 = 只有 BLOCKED（外部阻断，如模型额度 429）。
+//   打印 FAIL 却返回 0 是不允许的：shell/CI 必须能据此判定失败。
 // 覆盖：夏令时 GAP/FOLD、23 点日界、真太阳时跨时辰跨日、历史 v2 重新生成、
 //       AI 本地降级 / 8s 超时降级 / 云端成功、分享卡→相册、深色模式配置、分享深链。
 // 已知环境限制：真机性能、相册权限系统弹窗、深浅色实际切换需人工确认。
@@ -35,8 +37,14 @@ const PROJECT = process.env.WX_PROJECT_PATH
 
 const results = [];
 function rec(id, name, ok, detail) {
-  results.push({ id, name, ok, detail });
+  results.push({ id, name, ok, status: ok ? 'PASS' : 'FAIL', detail });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${id}  ${name}${detail ? '  :: ' + detail : ''}`);
+}
+// BLOCKED：不是代码缺陷，而是外部阻断（如模型额度 429、云环境不可用）。
+// 规则：FAIL>0 → exit 1；只有 BLOCKED → exit 2；全 PASS → exit 0。
+function recBlocked(id, name, detail) {
+  results.push({ id, name, ok: false, status: 'BLOCKED', detail });
+  console.log(`BLOCKED  ${id}  ${name}${detail ? '  :: ' + detail : ''}`);
 }
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 async function waitUntil(fn, ms = 10000, every = 200) {
@@ -224,17 +232,25 @@ try {
   const logA = await e2eLog();
   assert(pillar(rA, 'day') === '壬戌', '23:00 日柱=' + pillar(rA, 'day'));
   assert(rA.crossDay === false, '23:00@116.4 太阳钟 22:49 不应跨历日, crossDay=' + rA.crossDay);
-  assert((logA.modals || []).length >= 1, '应有时辰变更提示弹窗');
+  assert((logA.modals || []).length >= 1, '应有真太阳时校正弹窗');
   assert(!(logA.modals || []).some((m) => /undefined/.test(m.content)), '弹窗含 undefined: ' + JSON.stringify(logA.modals));
-  assert(/时辰：子时 → 亥时|时柱：/.test(logA.modals[0].content), '弹窗应说明时辰变更: ' + logA.modals[0].content);
+  // 基线必须等于「同一墙钟时间、不做经度修正」的 computeArchive 结果（23:00 已按子时换日进次日），
+  // 校正后退回前一天，所以弹窗要同时给出具体日柱与时柱，不能只断言出现了「时柱：」。
+  const mA = logA.modals[0];
+  assert(mA.title === '真太阳时校正跨日', 'title=' + mA.title);
+  assert(mA.content.includes('日柱：癸亥 → 壬戌'), '日柱基线错：' + mA.content);
+  assert(mA.content.includes('时柱：壬子 → 辛亥'), '时柱基线错：' + mA.content);
 
   const p2 = await openIndex({ solarDate: '2023-05-04', solarDateLabel: '2023-05-04', hour: 23, minute: 30 });
   await generate(p2);
   const rB = await resultData();
+  const logB = await e2eLog();
   assert(pillar(rB, 'day') === '癸亥', '23:30 日柱=' + pillar(rB, 'day'));
   assert(rB.solar === '2023-05-04', '出生日期应保持 2023-05-04, solar=' + rB.solar);
-  rec('T4', '23 点日界：23:00 不换日 / 23:30 日柱进次日（癸亥）', true,
-    `23:00→${pillar(rA, 'day')}(有弹窗), 23:30→${pillar(rB, 'day')}(crossDay=${rB.crossDay}, 见发现#3)`);
+  // 23:30 校正后仍是子时次日，与基线一致 → 不该弹任何变更提示。
+  assert((logB.modals || []).length === 0, '23:30 校正前后无差异，不应弹窗: ' + JSON.stringify(logB.modals));
+  rec('T4', '23 点日界：23:00 退回前一天 / 23:30 维持次日（癸亥）', true,
+    `23:00→${pillar(rA, 'day')}(弹窗含 日柱：癸亥 → 壬戌), 23:30→${pillar(rB, 'day')}(无弹窗)`);
 } catch (e) { rec('T4', '23 点日界', false, e.message); }
 
 // ================= T5 真太阳时跨时辰+跨日 =================
@@ -249,6 +265,8 @@ try {
   assert(pillar(r, 'day') !== '甲辰', '日柱不应仍是 05-04: ' + pillar(r, 'day'));
   assert((log.modals || []).some((m) => m.title === '真太阳时校正跨日'), 'modal=' + JSON.stringify(log.modals));
   assert(!(log.modals || []).some((m) => /undefined/.test(m.content)), '弹窗含 undefined: ' + JSON.stringify(log.modals));
+  // 跨日基线：同一墙钟 00:30 不做经度修正仍是 05-04 的壬戌/丙子，校正后退回 05-03。
+  assert((log.modals || []).some((m) => m.content.includes('日柱：壬戌 → 辛酉')), '跨日基线错：' + JSON.stringify(log.modals));
   assert(String(r.hourLabel2).includes('真太阳时'), 'hourLabel2=' + r.hourLabel2);
   rec('T5', '真太阳时跨日：东经90° 墙钟 00:30 → 太阳钟前一日 22:30', true, `${r.canonDateText} 日柱=${pillar(r, 'day')} 时柱=${pillar(r, 'hour')}`);
 } catch (e) { rec('T5', '真太阳时跨时辰/跨日', false, e.message); }
@@ -317,10 +335,13 @@ try {
     const stale = consoleLines.some((l) => l.includes('missing_doc_fields'))
       ? ' | 判定：线上云函数仍是 V4 之前版本（missing_doc_fields 已在 92f035f 移除），需重新部署 cloudfunctions/insight'
       : '';
-    const quota = consoleLines.some((l) => /status code 429/.test(l))
-      ? ' | 判定：模型接口 429 限流/额度耗尽，需在云开发控制台提升该模型调用额度后重测'
+    const quota = consoleLines.some((l) => /status code 429|model_rate_limited/.test(l))
+      ? ' | 判定：模型接口 429 限流/额度耗尽，需在云开发控制台提升该模型调用额度后重测（外部阻断，非代码缺陷）'
       : '';
-    rec('T9', 'AI 云端成功（真实云函数 + Guard）', false, `insightModel=${d.insightModel} (${ms}ms) ${tail.join(' // ')}${stale}${quota}`);
+    const detail = `insightModel=${d.insightModel} (${ms}ms) ${tail.join(' // ')}${stale}${quota}`;
+    // 429 属外部额度阻断：标 BLOCKED 而不是伪装成 PASS，也不是代码 FAIL。
+    if (quota) recBlocked('T9', 'AI 云端成功（真实云函数 + Guard）', detail);
+    else rec('T9', 'AI 云端成功（真实云函数 + Guard）', false, detail);
   }
 } catch (e) { rec('T9', 'AI 云端成功', false, e.message); }
 
@@ -381,10 +402,10 @@ try {
   assert(log.saves[0] && String(log.saves[0]).length > 4, 'filePath 非法: ' + log.saves[0]);
   assert((log.toasts || []).some((t) => String(t).includes('已保存')), 'toasts=' + JSON.stringify(log.toasts));
   await mp.restoreWxMethod('saveImageToPhotosAlbum');
-  rec('T10', '分享卡 canvas → 保存到相册（真实 canvas 产出 tempFilePath）', true, String(log.saves[0]));
+  rec('T10', '分享卡链路：真实 canvas 产出 tempFilePath → saveImageToPhotosAlbum（系统相册权限需人工）', true, String(log.saves[0]));
 } catch (e) {
   try { await mp.restoreWxMethod('saveImageToPhotosAlbum'); } catch { /* 还原失败可忽略 */ }
-  rec('T10', '分享卡保存到相册', false, e.message);
+  rec('T10', '分享卡保存到相册链路', false, e.message);
 }
 
 // ================= T11 深色模式配置 =================
@@ -401,8 +422,8 @@ try {
   const dirs = fs.readdirSync(PROJECT + '\\pages', { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => 'pages/' + d.name + '/' + d.name);
   const missing = dirs.filter((d) => !pages.includes(d));
   assert(missing.length === 0, '页面目录未注册: ' + missing.join(','));
-  rec('T11', '深色模式：darkmode + theme.json 双主题 + 七页 IA', true, `theme=${si.theme}, vars=${Object.keys(t.dark).length}`);
-} catch (e) { rec('T11', '深色模式配置', false, e.message); }
+  rec('T11', '深色模式配置契约：darkmode + theme.json 双主题 + 页面注册（真机视觉需人工）', true, `theme=${si.theme}, vars=${Object.keys(t.dark).length}`);
+} catch (e) { rec('T11', '深色模式配置契约', false, e.message); }
 
 // ================= T12 结果页可分享 =================
 try {
@@ -414,8 +435,14 @@ try {
 } catch (e) { rec('T12', '分享', false, e.message); }
 
 console.log('\n================ SUMMARY ================');
-for (const r of results) console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.id}  ${r.name}${r.detail ? '  :: ' + r.detail : ''}`);
-const pass = results.filter((r) => r.ok).length;
-console.log(`\n${pass}/${results.length} passed`);
+for (const r of results) console.log(`${r.status}  ${r.id}  ${r.name}${r.detail ? '  :: ' + r.detail : ''}`);
+const pass = results.filter((r) => r.status === 'PASS').length;
+const failed = results.filter((r) => r.status === 'FAIL').length;
+const blocked = results.filter((r) => r.status === 'BLOCKED').length;
+console.log(`\n${pass}/${results.length} passed  (FAIL=${failed}, BLOCKED=${blocked})`);
 
 await mp.disconnect();
+// 退出码必须反映真实结果，否则 shell/CI 会把「打印了 FAIL」当成通过。
+if (failed > 0) process.exitCode = 1;
+else if (blocked > 0) process.exitCode = 2;
+else process.exitCode = 0;

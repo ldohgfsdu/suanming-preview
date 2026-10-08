@@ -3,7 +3,7 @@
  * Deterministic, pure-equation facts only (no fate/luck/judgement).
  * Builds on the verified engine.js core (JDN, solar lon, terms, pillars, EoT).
  * Adds: four pillars (year/month/day/hour), 五虎遁 month, 五鼠遁 hour, 五行 tally,
- * 日柱纳音 (60-cycle), solar-term prev/next UTC, 朔望月龄 via Meeus new-moon,
+ * solar-term prev/next UTC, 朔望月龄 via Meeus new-moon,
  * and 真太阳时 offset = EoT + 4*(lon-120) minutes (place optional).
  */
 'use strict';
@@ -21,7 +21,7 @@ export const ELEMENT = {
 };
 export const ELEMENT_NAME = { wood: '木', fire: '火', earth: '土', metal: '金', water: '水' };
 
-// 地支本气五行（本气藏干，确定性映射，非预测）：子水 丑土 寅木 卯木 辰土 巳火 午火 未土 申金 酉金 戌土 亥水
+// 地支本气五行（确定性映射）：子水 丑土 寅木 卯木 辰土 巳火 午火 未土 申金 酉金 戌土 亥水
 export const ELEMENT_ZHI = {
   '子': 'water', '丑': 'earth', '寅': 'wood', '卯': 'wood', '辰': 'earth', '巳': 'fire',
   '午': 'fire', '未': 'earth', '申': 'metal', '酉': 'metal', '戌': 'earth', '亥': 'water',
@@ -32,8 +32,6 @@ function mod360(x) { let v = x % 360; if (v < 0) v += 360; return v; }
 function rd(d) { return d * D2R; }
 
 // ---------------- 月份柱 ----------------
-// 月之支以“节”为分界；节序为偶 {0,2,4,...,22}：
-//   ord=0 小寒->丑(1) ; 2 立春->寅(2) ; 4 惊蛰->卯(3) ... 22 大雪->子(0)
 function monthBranchFromOrd(ord) {
   return ((((ord - 2) / 2 + 2) % 12) + 12) % 12;
 }
@@ -46,57 +44,34 @@ function findJieOrd(jde) {
   return best;
 }
 
-/** 月柱：五虎遁（寅月干由年干定）。ganzhiYear 为八字年。 */
+/** 月柱：五虎遁（寅月干由年干定）。 */
 export function monthPillar(jde, ganzhiYear) {
   const ord = findJieOrd(jde);
   if (ord < 0) return null;
   const zhi = monthBranchFromOrd(ord);
   const yStem = (((ganzhiYear - 1984) % 10) + 10) % 10;
-  const yinStem = (yStem * 2 + 2) % 10;           // 五虎遁
+  const yinStem = (yStem * 2 + 2) % 10;
   const stem = (yinStem + ((zhi - 2 + 12) % 12)) % 10;
   return { gan: GANS[stem], zhi: ZHIS[zhi], ganzhi: GANS[stem] + ZHIS[zhi] };
 }
 
-/** 时柱：五鼠遁。hour in 0..23（23 与 0 皆子时）。dayStemIdx 0..9。 */
+/** 时柱：五鼠遁。hour in 0..23（23 与 0 皆子时）。 */
 export function hourPillar(dayStemIdx, hour) {
-  const zhi = Math.floor((hour + 1) / 2) % 12;   // 0=子
-  const ziStem = (dayStemIdx * 2) % 10;          // 五鼠遁
+  const zhi = Math.floor((hour + 1) / 2) % 12;
+  const ziStem = (dayStemIdx * 2) % 10;
   const stem = (ziStem + zhi) % 10;
   return { gan: GANS[stem], zhi: ZHIS[zhi], ganzhi: GANS[stem] + ZHIS[zhi] };
 }
 
-/**
- * 子时换日口径（移植自 Core `BirthInput.DayBoundaryRule`）。
- *
- * - `CHANGE_AT_ZI`：23:00 进入早子时即换日柱（传统主流）
- * - `CHANGE_AT_MIDNIGHT`：00:00 才换日，23:00–23:59 仍用当日日柱（晚子时）
- */
 export const DayBoundaryRule = {
   CHANGE_AT_ZI: 'CHANGE_AT_ZI',
   CHANGE_AT_MIDNIGHT: 'CHANGE_AT_MIDNIGHT',
 };
-
-/** 默认口径：早子时换日（与既有行为一致，保证向后兼容）。 */
 export const DEFAULT_DAY_BOUNDARY_RULE = DayBoundaryRule.CHANGE_AT_ZI;
 
-/**
- * 依子时换日口径，推断「排盘用公历日」与「取时支用的小时」。
- *
- * 移植自 Core `BaZiCalculator.applyDayBoundary`：
- *  - hourUnknown 时**不捏造正午**，仅按日历日取日柱，时支为 null
- *  - CHANGE_AT_ZI 且 hour>=23 → 日柱取次日，时支仍为该 hour（子）
- *  - CHANGE_AT_MIDNIGHT → 一律不换日
- *
- * @param {number} y @param {number} m @param {number} d
- * @param {number} hour 0–23（可为小数：墙钟精确到分、或太阳钟 canonHour 都合法），或 -1 表示时辰不详
- * @param {string} rule DayBoundaryRule 之一
- * @returns {{ y:number, m:number, d:number, hourForZhi:number|null, dayShifted:boolean }}
- */
+/** 依子时换日口径，推断历日与取时支小时。 */
 export function applyDayBoundary(y, m, d, hour, rule = DEFAULT_DAY_BOUNDARY_RULE) {
-  if (!(hour >= 0)) {
-    // 时辰不详：绝不捏造单一答案，时支留空
-    return { y, m, d, hourForZhi: null, dayShifted: false };
-  }
+  if (!(hour >= 0)) return { y, m, d, hourForZhi: null, dayShifted: false };
   if (rule === DayBoundaryRule.CHANGE_AT_ZI && hour >= 23) {
     const n = nextDay(y, m, d);
     return { y: n.y, m: n.m, d: n.d, hourForZhi: hour, dayShifted: true };
@@ -104,27 +79,13 @@ export function applyDayBoundary(y, m, d, hour, rule = DEFAULT_DAY_BOUNDARY_RULE
   return { y, m, d, hourForZhi: hour, dayShifted: false };
 }
 
-/** 公历加一天（走儒略日数，避免手写月长表）。 */
 function nextDay(y, m, d) {
   const jd = gregorianToJde(y, m, d) + 1;
   const g = jdeToGregorian(jd);
   return { y: g.y, m: g.m, d: g.d };
 }
 
-/**
- * 五鼠遁起时干所用的日干。
- *
- * 时辰干支连续（癸亥之后为甲子），故**23:00–23:59 的子时干总按次日日干起**：
- *  - CHANGE_AT_ZI：日柱已是次日，直接用日柱日干
- *  - CHANGE_AT_MIDNIGHT：日柱仍为当日，时干须按**次日**日干起遁
- *    （Core 自 0.22.20 起更正，此前误用当日日干）
- *
- * @param {{y:number,m:number,d:number}} pillarDate 排盘用公历日
- * @param {number} hour 0–23
- * @param {string} rule DayBoundaryRule 之一
- * @param {{index:number}} dayPillarObj 当日日柱（须传整柱对象以取 index）
- * @returns {number} 用于五鼠遁的日干序号 0–9
- */
+/** 晚子时五鼠遁时干取次日日干。 */
 export function hourStemDayStem(pillarDate, hour, rule, dayPillarObj) {
   if (rule === DayBoundaryRule.CHANGE_AT_MIDNIGHT && hour >= 23) {
     const n = nextDay(pillarDate.y, pillarDate.m, pillarDate.d);
@@ -133,7 +94,7 @@ export function hourStemDayStem(pillarDate, hour, rule, dayPillarObj) {
   return dayPillarObj.index % 10;
 }
 
-/** 四柱五行字数（天干 + 地支|气）；zhiArr 可选，缺省仅计天干。 */
+/** 四柱五行字数（天干 + 地支本气）。 */
 export function tally(ganArr, zhiArr = []) {
   const c = { wood: 0, fire: 0, earth: 0, metal: 0, water: 0 };
   for (const g of ganArr) { const e = ELEMENT[g]; if (e) c[e] += 1; }
@@ -151,7 +112,7 @@ export function newMoonJde(k) {
   const Fm = mod360(160.7108 + 390.67050284 * k - 0.0016118 * T * T - 0.00000227 * T * T * T + 0.000000046 * T * T * T * T);
   const Om = mod360(124.7746 - 1.56375588 * k + 0.0020672 * T * T + 0.00000215 * T * T * T);
   J +=
-    -0.40720 * Math.sin(rd(Mm))   // 最大项饱动作用于月心平近点角 M'(Mm)，非太阳平近角 M
+    -0.40720 * Math.sin(rd(Mm))
     + 0.17241 * E * Math.sin(rd(M))
     + 0.01608 * Math.sin(rd(2 * Mm))
     + 0.01039 * Math.sin(rd(2 * Fm))
@@ -175,10 +136,8 @@ export function newMoonJde(k) {
   return J;
 }
 
-/** 朔（新月）起始的月龄（天），及最近的朔时刻 */
 export function lunarAge(jde) {
   const k = Math.round((jde - 2451550.09766) / 29.530588861);
-  // 找到 k 使 newMoonJde(k) <= jde < newMoonJde(k+1)
   let j = k;
   while (newMoonJde(j) > jde) j -= 1;
   while (newMoonJde(j + 1) <= jde) j += 1;
@@ -186,7 +145,6 @@ export function lunarAge(jde) {
   return { newMoonIndex: j, newMoonJde: nm, ageDays: jde - nm };
 }
 
-/** 朔望月龄 -> 月相名（含 phase 判定位） */
 export function lunarPhase(ageDays) {
   const a = ageDays % 29.530588861;
   if (a < 1.0) return { name: '朔', sym: 'new' };
@@ -201,24 +159,20 @@ export function lunarPhase(ageDays) {
   return { name: '残月', sym: 'crescent' };
 }
 
-// ---------------- 完整档案 ----------------
-/** 由小时（可为小数）映射到时辰槽 index（子=0 … 亥=11）。 */
 function zhiOfHour(hour) {
   if (!Number.isFinite(hour)) return 0;
   return Math.floor(((((hour + 1) + 24) % 24) / 2)) % 12;
 }
-/** 在公历日上增加 days 天后返回新的公历日（仅取“日”，天内时刻取午正）。 */
+
 function shiftDate(y, m, d, days) {
   const g = jdeToGregorian(gregorianToJde(y, m, d) + days);
   return { y: g.y, m: g.m, d: g.d };
 }
-/** 真太阳时本地化：把所选时刻（小时）按出生地真太阳时修正，得到本地历日与太阳时。
- * 返回修正分钟、修正后太阳时(solarHour，可为负或≥24)、跨日天数(dayShift)、
- * 归一化日内太阳时(canonHour)与移动后的公历日(canonDate)。 */
+
 export function trueSolarToLocal(y, m, d, hour, lonDeg) {
   const jmin = eotMinutes(gregorianToJde(y, m, d)) + 4 * (lonDeg - 120);
-  const solarHour = hour + jmin / 60;                    // 可 <0 或 ≥24
-  const dayShift = Math.floor(solarHour / 24);          // 负=前一日，正=次日
+  const solarHour = hour + jmin / 60;
+  const dayShift = Math.floor(solarHour / 24);
   const canonHour = ((solarHour % 24) + 24) % 24;
   const canonDate = shiftDate(y, m, d, dayShift);
   return {
@@ -229,49 +183,31 @@ export function trueSolarToLocal(y, m, d, hour, lonDeg) {
   };
 }
 
-/** hour：0..23，或 -1 = 未知（则无时柱）。lonDeg：本地经度（东经正，如北京 116.4）；null=未提供。 */
+/**
+ * hour 为标准北京时间的 0..23 小数小时；-1 表示未知。历史中国夏时制必须在调用本函数前
+ * 通过 civilTime.js 先解析为标准北京时间，避免把夏时制墙钟误当成 UTC+8。
+ */
 export function computeArchive(y, m, d, hour = -1, lonDeg = null,
   dayBoundaryRule = DEFAULT_DAY_BOUNDARY_RULE) {
   const jd = gregorianToJde(y, m, d);
-  // 出生「绝对瞬间」＝北京墙钟时刻（双时间轴的年/月柱与节气 bracket 一律按它判）。
-  // gregorianToJde(y,m,d) 返回的是该历日的**正午 UT**（= 北京 20:00），
-  // 因此 (wallHour - 20)/24 才把它换算回北京墙钟；时辰不详时取当日午正，不伪造具体时刻。
-  // 旧写法 `gregorianToJde(y2,m2,d2) + hour/24` 等价于晚 20 小时，
-  // 会把立春与 12 个「节」的判定点整体推后，交界日的年柱/月柱随之错判。
   const wallHour = hour >= 0 ? hour : 12;
+  // gregorianToJde 返回该历日正午 UT；北京标准时 20:00 与其对齐，因此减 20h 得绝对瞬间。
   const wallJde = jd + (wallHour - 20) / 24;
-  // 真太阳时修正：仅当提供了经度且时辰已知时，才进入“单一时间事实源”chain。
-  // hour 为页面折算后的小数小时（如 23.983），故判据必须是 < 24 而非 <= 23，
-  // 否则精确到分的 23:01–23:59 会被静默跳过真太阳时校正。
+
   const rawCanon = (Number.isFinite(lonDeg) && hour >= 0 && hour < 24)
     ? trueSolarToLocal(y, m, d, hour, lonDeg) : null;
-  // 若真太阳时修正把本地历日推到受支持年份(1900-2100)之外（仅极能边界），则回退到该日
-  // 的非修正路径，避免越界换算抛错。
   const canon = (rawCanon
     && rawCanon.canonDate.y >= 1900 && rawCanon.canonDate.y <= 2100) ? rawCanon : null;
 
   let yp, mp, dp, hp, y2, m2, d2;
   if (canon) {
-    // —— 单一时间事实源：先确定 真太阳时->本地历日+太阳时，再统一算各时间敏感柱 ——
     y2 = canon.canonDate.y; m2 = canon.canonDate.m; d2 = canon.canonDate.d;
-    // 日柱：按**地方太阳钟**的子时换日口径修正历日（双时间轴纪律：日界走太阳钟）。
-    // 必须传 canon.canonHour —— 旧实现传墙钟 hour，等于用墙钟判据去切太阳日，
-    // 「太阳钟 23:46 / 墙钟 00:00」这类输入的日界判据会整体错位。
     const bnd = applyDayBoundary(y2, m2, d2, canon.canonHour, dayBoundaryRule);
     y2 = bnd.y; m2 = bnd.m; d2 = bnd.d;
     dp = dayPillar(gregorianToJde(y2, m2, d2));
-    // 年/月柱由出生"绝对瞬间"的太阳黄经判定（立春/节边界）
-    // 【双时间轴纪律，移植自 Core BaZiCalculator.resolveExactTime / CalculationProfile】
-    //   · 年柱/月柱的节气界 → 出生**绝对瞬间**（civil 墙钟时刻，不做真太阳时修正）
-    //   · 日界/时柱        → **地方太阳钟**（真太阳时修正后的时刻）
-    // 理由：真太阳时修正只用于「日界/时柱」的太阳钟口径，
-    //       绝不可用来挪动出生瞬间本身，否则会错误地跨过立春或「节」的交接时刻。
-    // 注意：必须用原始输入的墙钟瞬间 wallJde —— 不得引入真太阳时修正量、
-    //       不得用 canon.canonHour，也不得用日界修正后的历日 y2/m2/d2。
     const absJde = wallJde;
     yp = yearPillar(absJde);
     mp = monthPillar(absJde, yp.ganzhiYear);
-    // 时柱由修正后的太阳时判定；时干所用日干依子时换日口径取
     if (bnd.hourForZhi != null) {
       const stemBase = hourStemDayStem(
         { y: y2, m: m2, d: d2 }, bnd.hourForZhi, dayBoundaryRule, dp,
@@ -281,7 +217,6 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
       hp = null;
     }
   } else {
-    // 无真太阳时修正路径（未提供地点或超界）
     const bnd = applyDayBoundary(y, m, d, hour, dayBoundaryRule);
     y2 = bnd.y; m2 = bnd.m; d2 = bnd.d;
     yp = yearPillar(wallJde);
@@ -297,20 +232,20 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
     }
   }
 
-  // 节气 bracket（前后各一）——由 engine 的单一事实源 solarTermResultAt 提供。
-  // 按出生绝对瞬间判（旧实现用历日正午 UT，节气当天会把上/下节气看错最多 20 小时）。
   const { prev, next, daysToNext } = solarTermResultAt(wallJde);
-
   const stems = [yp.gan, mp ? mp.gan : null, dp.gan, hp ? hp.gan : null].filter(Boolean);
   const zhis = [yp.zhi, mp ? mp.zhi : null, dp.zhi, hp ? hp.zhi : null].filter(Boolean);
 
-  // 真太阳时
-  let eot = eotMinutes(jd);
+  const eot = eotMinutes(jd);
   let tSolar = null, degraded = true;
-  if (Number.isFinite(lonDeg)) { tSolar = Number((eot + 4 * (lonDeg - 120)).toFixed(2)); degraded = false; }
+  if (Number.isFinite(lonDeg)) {
+    tSolar = Number((eot + 4 * (lonDeg - 120)).toFixed(2));
+    degraded = false;
+  }
 
-  const moon = lunarPhase(lunarAge(jd).ageDays);
-
+  // 月龄属于“绝对瞬间”事实：必须使用出生瞬间 wallJde，而不是固定的该日正午 jd。
+  const moonAgeDays = lunarAge(wallJde).ageDays;
+  const moon = lunarPhase(moonAgeDays);
   const lunar = solarToLunar(y2, m2, d2);
 
   return {
@@ -318,7 +253,7 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
     solarInput: { y, m, d },
     instant_day: `${String(y2).padStart(4, '0')}-${String(m2).padStart(2, '0')}-${String(d2).padStart(2, '0')}`,
     dayShift: canon ? canon.dayShift : 0,
-    lunar, // {year,month,day,leap,approx,text} 或 null
+    lunar,
     four: {
       year: { label: '年', gan: yp.gan, zhi: yp.zhi, ganz: yp.gan + yp.zhi, element: ELEMENT[yp.gan] },
       month: mp ? { label: '月', gan: mp.gan, zhi: mp.zhi, ganz: mp.ganzhi, element: ELEMENT[mp.gan] } : null,
@@ -335,8 +270,7 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
       canonDateText: canon ? canon.dateText : null,
       dayChanged: canon ? canon.dayChanged : false,
     },
-    moon: { ageDays: Number(lunarAge(jd).ageDays.toFixed(4)), name: moon.name, sym: moon.sym },
+    moon: { ageDays: Number(moonAgeDays.toFixed(4)), name: moon.name, sym: moon.sym },
     algorithmic_approx: false,
   };
 }
-

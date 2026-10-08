@@ -1,9 +1,11 @@
-// tests/unit/insight-model-policy.test.mjs
-// 锁住云函数模型调用的失败分类与重试状态机（model-policy 是纯函数模块，无 SDK 依赖）。
+﻿// tests/unit/insight-model-policy.test.mjs
+// 锁住云函数模型调用的失败分类、重试状态机与日志脱敏（model-policy 是纯函数模块，无 SDK 依赖）。
 // 对应评审要求：
 //   1) HTTP 429 → model_rate_limited，模型调用次数 = 1（不能自己再打一次）
 //   2) HTTP 200 + 非 JSON → model_output_not_json
 //   3) HTTP 200 + JSON + Guard 失败 → 带 repair hint 重试一次
+//   4) 服务端日志同样不得出现 sk-/token/带 query 的 URL
+//   5) 无 status 的未知异常不再一律当 transient 重试
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -12,7 +14,7 @@ const require = createRequire(import.meta.url);
 const policy = require('../../cloudfunctions/insight/model-policy.js');
 
 const {
-  CLIENT, classifyModelError, classifyNotJson, extractJson, runModelAttempts,
+  CLIENT, classifyModelError, classifyNotJson, extractJson, redactProviderError, runModelAttempts,
 } = policy;
 
 function err(status, message) {
@@ -33,7 +35,7 @@ test('MP1 429/配额限流：不重试，modelCalls=1，回传 model_rate_limite
   assert.equal(r.reason, CLIENT.RATE_LIMITED);
 });
 
-test('MP1b 429 只出现在 message 里（无 status 字段）时同样不重试', async () => {
+test('MP1b 429 只出现在 message 里（无 status 字段）时同样不重试', () => {
   const cls = classifyModelError(new Error('Request failed with status code 429'));
   assert.equal(cls.kind, 'rate_limited');
   assert.equal(cls.retryable, false);
@@ -157,4 +159,53 @@ test('MP10 extractJson 支持围栏/正文混排，垃圾输入返回 null', () 
   assert.equal(extractJson('没有 JSON 的纯文本'), null);
   assert.equal(extractJson(''), null);
   assert.equal(extractJson(null), null);
+});
+
+test('MP11 服务端日志脱敏：sk-/key=/Bearer/URL query 全部打码', () => {
+  const raw = 'POST https://api.example.com/v1/chat?api_key=sk-abcdef123456&model=x failed: '
+    + 'Authorization: Bearer abc.def-gh, token=TOK123, secret: mysecret, sk-live-9876543210';
+  const safe = redactProviderError(new Error(raw));
+  assert.equal(safe.includes('sk-abcdef123456'), false, safe);
+  assert.equal(safe.includes('sk-live-9876543210'), false, safe);
+  assert.equal(safe.includes('TOK123'), false, safe);
+  assert.equal(safe.includes('mysecret'), false, safe);
+  assert.equal(safe.includes('abc.def-gh'), false, safe);
+  assert.equal(safe.includes('?api_key='), false, safe);
+  assert.ok(safe.includes('[REDACTED]'), safe);
+  assert.ok(safe.includes('https://api.example.com/v1/chat'), '域名本身应保留便于定位');
+});
+
+test('MP11b 日志脱敏不影响分类：429 仍归一为 model_rate_limited', () => {
+  const e = new Error('Request failed with status code 429; api_key=sk-abcdef123456');
+  const cls = classifyModelError(e);
+  assert.equal(cls.clientReason, CLIENT.RATE_LIMITED);
+  assert.equal(cls.retryable, false);
+  assert.equal(redactProviderError(e).includes('sk-abcdef123456'), false);
+});
+
+test('MP12 无 status 的未知异常不重试（不再一律当 transient）', async () => {
+  let calls = 0;
+  const r = await runModelAttempts({
+    callModel: async () => {
+      calls += 1;
+      throw new TypeError("Cannot read properties of undefined (reading 'createModel')");
+    },
+    guard: () => [],
+  });
+  assert.equal(r.ok, false);
+  assert.equal(calls, 1, '未知无状态异常不得重试');
+  assert.equal(r.reason, CLIENT.UNAVAILABLE);
+  assert.equal(classifyModelError(new Error('model deepseek-v4-flash not found')).retryable, false);
+});
+
+test('MP13 明确网络瞬态（无 status）仍可重试一次', async () => {
+  let calls = 0;
+  const r = await runModelAttempts({
+    callModel: async () => { calls += 1; throw new Error('connect ETIMEDOUT 10.0.0.1:443'); },
+    guard: () => [],
+  });
+  assert.equal(r.ok, false);
+  assert.equal(calls, 2);
+  assert.equal(r.reason, CLIENT.UNAVAILABLE);
+  assert.equal(classifyModelError(new Error('socket hang up')).retryable, true);
 });

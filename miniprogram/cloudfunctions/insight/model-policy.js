@@ -55,7 +55,9 @@ function classifyModelError(err) {
   if (status && status >= 500) {
     return { kind: 'server_error', retryable: true, clientReason: CLIENT.UNAVAILABLE, status };
   }
-  if (!status || /network|timeout|timed out|econnreset|econnrefused|socket|fetch failed|dns|超时/i.test(raw)) {
+  // 只有明确命中网络瞬态特征才重试。没有 status 的未知异常（SDK 配置错、TypeError、
+  // model-not-found 等）一律按 failed 处理、不重试：多打一次模型只会放大成本。
+  if (/network|timeout|timed out|econnreset|econnrefused|etimedout|socket|fetch failed|dns|enotfound|eai_again|超时|网络/i.test(raw)) {
     return { kind: 'transient', retryable: true, clientReason: CLIENT.UNAVAILABLE, status };
   }
   return { kind: 'failed', retryable: false, clientReason: CLIENT.UNAVAILABLE, status };
@@ -63,6 +65,24 @@ function classifyModelError(err) {
 
 function classifyNotJson() {
   return { kind: 'not_json', retryable: false, clientReason: CLIENT.NOT_JSON, status: null };
+}
+
+/**
+ * 服务端日志脱敏：provider 异常文本里可能带 sk- 密钥、token/secret、Bearer、
+ * 带 query 的 URL。客户端已经只拿 clientReason，但 CloudBase 日志同样不该出现密钥。
+ */
+const REDACT_RULES = [
+  [/sk-[A-Za-z0-9_-]{6,}/g, 'sk-[REDACTED]'],
+  // 值里可能直接是 Bearer xxx，所以要把带前缀的凭据整体吃掉，否则会留下半截 token。
+  [/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|secret|authorization|password|signature|sig)\b(\s*[=:]\s*)("[^"]*"|'[^']*'|(?:Bearer|Basic)\s+[^\s"',&]+|[^\s"',&]+)/gi, '$1$2[REDACTED]'],
+  [/\b(Bearer|Basic)\s+[A-Za-z0-9._-]+/gi, '$1 [REDACTED]'],
+  [/(https?:\/\/[^\s?'"&]+)\?[^\s"']+/gi, '$1?[REDACTED]'],
+];
+
+function redactProviderError(err) {
+  let s = rawMessage(err);
+  REDACT_RULES.forEach(([re, rep]) => { s = s.replace(re, rep); });
+  return s.slice(0, 300);
 }
 
 /** 从模型输出里抠出第一个 JSON 对象；解析失败返回 null（按 model_output_not_json 处理）。 */
@@ -138,6 +158,7 @@ module.exports = {
   classifyModelError,
   classifyNotJson,
   extractJson,
+  redactProviderError,
   runModelAttempts,
   statusOf,
   rawMessage,

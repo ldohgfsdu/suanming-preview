@@ -14,7 +14,7 @@
 const crypto = require('node:crypto');
 const tcb = require('@cloudbase/node-sdk');
 const cloud = require('wx-server-sdk');
-const { extractJson, runModelAttempts } = require('./model-policy');
+const { extractJson, redactProviderError, runModelAttempts } = require('./model-policy');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const tcbApp = tcb.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -387,10 +387,10 @@ exports.main = async (event) => {
       }
       return q;
     },
-    // provider 原始报错只进服务端日志；客户端只拿 clientReason，避免把上游细节透出去。
+    // provider 原始报错只进服务端日志，且先脱敏：日志里同样不该出现 sk-/token/带 query 的 URL。
     onCallError: (cls, e) => {
       console.error('[insight] 模型调用失败：', cls.kind, cls.status || '-',
-        String((e && (e.message || e.errMsg)) || e).slice(0, 300));
+        redactProviderError(e));
     },
     onGuardFail: (errors, n) => {
       console.error('[insight] guard 未通过（第 ' + (n + 1) + ' 次）：', errors.join(','));

@@ -1,88 +1,69 @@
 /**
  * miniprogram/lib/insight.js — 历法文化解读层（比赛轨）
  *
- * 分层（严格对齐 Preview 铁律「AI 失败不阻断主链路」）：
- *   1) 本地规则降级：确定性模板，本机可跑、可复现，默认可演示。
- *   2) 云端 AI 覆盖：云函数 insight 成功时以 AI 文本覆盖降级文本。
+ * 分层：
+ *   1) 本地规则降级：确定性模板，本机可跑、可复现。
+ *   2) 云端 AI 覆盖：云函数成功时以 AI 文本覆盖降级文本。
  *
- * 语义范围（红线，只解释不判定）：
- *   - 只解释已给出的确定性历法事实，不补算、不改四柱。
- *   - 禁预测 / 吉凶 / 运势 / 宜忌 / 大运流年 / 十神断语 / 合婚择日。
- *   - 不把五行字面计数等同旺衰。
- *   - 未知输出「无法判定」，不替用户选择流派。
+ * 铁律：AI 只解释确定性事实，不参与任何历法计算。
  */
 'use strict';
 
 import { ELEMENT_NAME } from './archive.js';
 
-export const OUTPUT_VERSION = 'insight-1.0';
-export const PROMPT_VER = 'insight-prompt-v2';
+export const OUTPUT_VERSION = 'insight-1.1';
+export const PROMPT_VER = 'insight-prompt-v3';
+export const SCHEMA_VERSION = 'archive-document-v1';
 
-/** Output Guard 禁词集合（与云函数侧共用同一份口径）。 */
 export const BANNED_WORDS = [
   '算命', '占卜', '算卦', '卜卦',
   '运势', '运程', '流年', '大运', '注定', '命中',
   '吉凶', '宜忌', '化解', '犯太岁', '开运', '招财', '转运',
   '合婚', '择日', '看日子', '八字算',
-  // 微信内容安全按关键词命中，否定句式（「不含预测」「传统排盘」）同样违规：
-  // 自家文案已改写，此处同步封禁，防止模型把它们写回 sections。
   '排盘', '预测',
   '旺衰', '喜用', '用神', '忌神',
   '十神', '藏干', '神煞', '空亡', '胎元', '命宫', '身宫',
 ];
+const EVIDENCE_IDS = new Set(['e_term', 'e_lunar', 'e_pillars', 'e_wuxing', 'e_solar']);
 
-/** 本地可机检：文本是否触碰禁词。 */
 export function detectBanned(text) {
   if (!text) return [];
   return BANNED_WORDS.filter((w) => String(text).indexOf(w) >= 0);
 }
 
-/**
- * 从档案结果提取送入 AI / 模板的**结构化事实**。
- * 只含 P0 六类：时间 / 节气 / 干支 / 太阳时间 / 农历 / 五行字面计数。
- * 未知一律 null，不拼接展示串（H-1）。
- */
+/** 从结果页结构提取 AI 可见的 P0 客观事实。 */
 export function buildFacts(r) {
   if (!r) return null;
   return {
     pillars: (r.pillars || []).map((p) => ({
-      // 结果页展示用「年柱」，云函数 PILLAR_LABELS 只收「年」；
-      // 事实层只交真值，展示后缀在此剥掉（否则服务端必判 pillar_label 非法）。
       label: p.label ? String(p.label).replace(/柱$/, '') : null,
-      // 占位符 '—' 不是事实，未知一律 null（H-1），否则被 ganzhi_shape 拒。
       gan_zhi: p.ganz && p.ganz !== '—' ? p.ganz : null,
-      // 结果页给的已是中文五行；ELEMENT_NAME 只用于兜底英文键，查不到就原样交。
       element: p.element ? (ELEMENT_NAME[p.element] || p.element) : null,
     })),
     solarTerm: {
-      prev: r.prevTerm || null,
-      next: r.nextTerm || null,
+      prev: r.prevTerm && r.prevTerm !== '—' ? r.prevTerm : null,
+      next: r.nextTerm && r.nextTerm !== '—' ? r.nextTerm : null,
     },
     solarTime: {
-      // 未提供地点时页面给的是展示占位串（「未提供地点」），不是修正量；
-      // 交事实时归一为 null，否则规则模板会拼出「相差 未提供地点」。
       corrected: (r.trueSolar && r.trueSolar !== '未提供地点') ? r.trueSolar : null,
-      // 字段名以结果页实际产出的 crossDay 为准（此前误用 trueSolarDayChanged，导致恒为 false）
-      day_changed: !!(r.crossDay),
+      day_changed: !!r.crossDay,
     },
     lunar: r.lunarText || null,
-    wuxing: (r.tally || []).map((t) => ({
-      name: t.name,
-      literal_count: t.n,
-    })),
+    wuxing: (r.tally || []).map((t) => ({ name: t.name, literal_count: t.n })),
   };
 }
 
 /**
- * 客户端缓存键（**不是** HASH_CONTRACT_V1 的 docHash，勿混用、勿当 docHash 上传）。
- *
- * - 冻结契约 docHash：位于 `shared/hash/`，RFC 8785 规范化 + SHA-256 + NFC + 白名单，
- *   用途是「档案指纹 / 跨端对拍」，唯一真值为 `resolvedEpochMilli(INT,UTC)` + `timezoneId(IANA)`。
- * - 本函数：仅需「同一份事实 → 同一个键」的稳定性，用于本地缓存与重复请求去重，
- *   故用轻量 FNV 变体即可，不依赖 crypto（小程序端无稳定 SHA-256 API）。
+ * 客户端本地缓存键。它不是服务端 docHash：docHash 由云函数对规范化 facts 做 SHA-256。
+ * 本地键只用于同一客户端避免重复发起请求，并且必须随 schema/prompt/output 版本一起失效。
  */
 export function insightCacheKey(facts) {
-  const s = JSON.stringify(facts || {});
+  const s = JSON.stringify({
+    schemaVersion: SCHEMA_VERSION,
+    promptVer: PROMPT_VER,
+    outputVersion: OUTPUT_VERSION,
+    facts: facts || {},
+  });
   let h1 = 0x811c9dc5;
   let h2 = 0x01000193;
   for (let i = 0; i < s.length; i += 1) {
@@ -91,10 +72,8 @@ export function insightCacheKey(facts) {
     h1 = Math.imul(h1, 0x01000193) >>> 0;
     h2 = (h2 + c * (i + 1)) >>> 0;
   }
-  return 'ld-' + h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+  return [OUTPUT_VERSION, PROMPT_VER, h1.toString(16).padStart(8, '0'), h2.toString(16).padStart(8, '0')].join(':');
 }
-
-// ---------------- 本地规则降级模板 ----------------
 
 function countTally(facts) {
   const out = [];
@@ -105,10 +84,6 @@ function countTally(facts) {
   return out.length ? out.join('·') : '—';
 }
 
-/**
- * 地支 → 时辰 / 方位 / 月建 的静态文化对照（传统常识，不由事实推算）。
- * 只在时柱地支已知时使用，避免把「未知」写成文化结论。
- */
 const ZHI_CULTURE = {
   子: { hours: '23:00–01:00', dir: '北（坎）', month: '十一月' },
   丑: { hours: '01:00–03:00', dir: '东北（艮）', month: '十二月' },
@@ -124,14 +99,7 @@ const ZHI_CULTURE = {
   亥: { hours: '21:00–23:00', dir: '西北（乾）', month: '十月' },
 };
 
-/**
- * 规则降级：完全确定性、零模型、无网络。
- * 只做「事实 → 文化背景」的陈述，不含任何判断。
- *
- * 结构对齐长文解读（总论 + 分节长文），但内容严格限定在历法与文化域：
- * 每节先给结论式概述，再给两段说明；全部只引用 buildFacts 交来的真值。
- * 段落用 '\n\n' 分隔，渲染侧 white-space: pre-line 负责换行。
- */
+/** 本地确定性降级文本。 */
 export function ruleBasedInsight(facts) {
   if (!facts) return null;
   const f = facts;
@@ -140,7 +108,6 @@ export function ruleBasedInsight(facts) {
   const term = f.solarTerm || {};
   const hasSolar = !!(f.solarTime && f.solarTime.corrected);
 
-  // 1. 总论：把三套计时系统叠在同一个时刻上的坐标说明（不含任何插值，恒可输出）
   sections.push({
     id: 's0',
     title: '总论',
@@ -151,7 +118,6 @@ export function ruleBasedInsight(facts) {
     evidenceIds: ['e_pillars', 'e_term'],
   });
 
-  // 2. 节气坐标
   const termBits = [];
   if (term.prev) termBits.push('上一个节气是' + term.prev);
   if (term.next) termBits.push('下一个节气是' + term.next);
@@ -166,7 +132,6 @@ export function ruleBasedInsight(facts) {
     evidenceIds: ['e_term'],
   });
 
-  // 3. 农历日期（无事实时整节不产出，不写占位串）
   if (f.lunar) {
     sections.push({
       id: 's5',
@@ -179,7 +144,6 @@ export function ruleBasedInsight(facts) {
     });
   }
 
-  // 4. 四柱干支
   const hourPillar = (f.pillars || []).find((p) => p && p.label === '时');
   const hourMissing = !!(hourPillar && !hourPillar.gan_zhi);
   sections.push({
@@ -195,7 +159,6 @@ export function ruleBasedInsight(facts) {
     evidenceIds: ['e_pillars'],
   });
 
-  // 5. 十二时辰与地支（仅在时柱地支已知时产出）
   if (hourPillar && hourPillar.gan_zhi) {
     const zhi = hourPillar.gan_zhi.charAt(1);
     const c = ZHI_CULTURE[zhi];
@@ -212,9 +175,6 @@ export function ruleBasedInsight(facts) {
     }
   }
 
-  // 6. 五行字面计数（严守「计数 ≠ 强弱」）
-  //    文案避免出现「吉凶」二字本身——即便是否定句式，
-  //    微信内容安全审核按关键词命中，会被判为违规。统一改为「不作强弱评判」。
   sections.push({
     id: 's3',
     title: '五行字面分布',
@@ -225,7 +185,6 @@ export function ruleBasedInsight(facts) {
     evidenceIds: ['e_wuxing'],
   });
 
-  // 7. 太阳时间校正
   if (hasSolar) {
     sections.push({
       id: 's4',
@@ -250,40 +209,40 @@ export function ruleBasedInsight(facts) {
   };
 }
 
-/** 云函数返回结果的 Guard 校验（客户端侧二次防护）。 */
 export function validateInsight(insight, facts) {
   const errors = [];
   if (!insight || typeof insight !== 'object') return ['not_object'];
   if (insight.outputVersion !== OUTPUT_VERSION) errors.push('outputVersion');
+  if (insight.promptVer !== PROMPT_VER) errors.push('promptVer');
+  if (!/^[0-9a-f]{64}$/.test(String(insight.docHash || ''))) errors.push('docHash');
   if (!Array.isArray(insight.sections) || !insight.sections.length) errors.push('sections');
   if (!Array.isArray(insight.limitations) || !insight.limitations.length) errors.push('limitations');
-  const text = (insight.sections || [])
-    .map((s) => `${s.title || ''}${s.content || ''}`)
-    .join('');
+
+  const text = (insight.sections || []).map((s) => `${s.title || ''}${s.content || ''}`).join('');
   const banned = detectBanned(text);
   if (banned.length) errors.push('banned:' + banned.join(','));
+
+  (insight.sections || []).forEach((s, i) => {
+    if (s.contentType !== 'FACT' && s.contentType !== 'CULTURAL_CONTEXT') errors.push('contentType:' + i);
+    if (!Array.isArray(s.evidenceIds) || !s.evidenceIds.length) {
+      errors.push('evidence_empty:' + i);
+    } else {
+      s.evidenceIds.forEach((id) => { if (!EVIDENCE_IDS.has(id)) errors.push('evidence:' + id); });
+    }
+  });
+
   if (facts) {
     const known = JSON.stringify(facts);
-    (insight.sections || []).forEach((s) => {
-      if (s.contentType && s.contentType !== 'FACT' && s.contentType !== 'CULTURAL_CONTEXT') {
-        errors.push('contentType:' + s.contentType);
-      }
-      if (s.evidenceIds) {
-        s.evidenceIds.forEach((id) => {
-          if (known.indexOf(String(id)) < 0 && String(id).indexOf('e_') !== 0) {
-            errors.push('evidence:' + id);
-          }
-        });
-      }
-    });
+    const re = /[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥]/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (!known.includes(m[0])) errors.push('invented_ganzhi:' + m[0]);
+    }
   }
-  return errors;
+  return Array.from(new Set(errors));
 }
 
-/**
- * 统一入口：本地降级优先，云端成功则覆盖。
- * 任何异常都不抛出 —— AI 不可用时主链路照常。
- */
+/** 统一入口：本地降级优先，云端成功则覆盖。 */
 export function resolveInsight(archiveResult, opts) {
   const facts = buildFacts(archiveResult);
   const local = ruleBasedInsight(facts);
@@ -291,7 +250,7 @@ export function resolveInsight(archiveResult, opts) {
   const fallback = { insight: local, facts, usedAI: false, reason: 'local_default', cacheKey };
   if (!opts || !opts.cloudAvailable) return fallback;
 
-  return callCloudInsight(facts, cacheKey)
+  return callCloudInsight(facts)
     .then((res) => {
       const errors = validateInsight(res, facts);
       if (errors.length) {
@@ -306,20 +265,12 @@ export function resolveInsight(archiveResult, opts) {
       insight: local,
       facts,
       usedAI: false,
-      reason: 'error:' + ((e && e.errMsg) || 'unknown'),
+      reason: 'error:' + ((e && (e.errMsg || e.message)) || 'unknown'),
       cacheKey,
     }));
 }
 
-/**
- * 调用云函数 insight。
- *
- * 注意：上行字段名为 `docHash` 是**沿用已部署云函数的入参名**（改名需同步重新部署，
- * 否则会命中 missing_doc_fields 而全面降级）。其实际值是**客户端缓存键** cacheKey，
- * 仅用于云端日志排查与回显；**冻结契约的 docHash（SHA-256 + RFC 8785）不在客户端生成**，
- * 服务端不应把它当作档案指纹使用。
- */
-function callCloudInsight(facts, cacheKey) {
+function callCloudInsight(facts) {
   return new Promise((resolve, reject) => {
     if (typeof wx === 'undefined' || !wx.cloud) {
       reject(new Error('cloud_unavailable'));
@@ -329,18 +280,15 @@ function callCloudInsight(facts, cacheKey) {
       name: 'insight',
       data: {
         action: 'interpret',
-        docHash: cacheKey,
-        schemaVersion: 'archive-document-v1',
+        schemaVersion: SCHEMA_VERSION,
         promptVer: PROMPT_VER,
         facts,
-        locale: 'zh-CN',
       },
       success: (res) => {
         const d = res && res.result;
         if (d && d.ok && d.insight && (d.insight.sections || []).length) {
           resolve(d.insight);
         } else if (d && d.ok && d.insight && d.insight.fallback) {
-          // 云端已降级：把真实原因带回，便于定位（模型未开通/额度/超时等）
           reject(new Error('cloud_fallback:' + (d.insight.reason || 'unknown')));
         } else {
           reject(new Error((d && d.reason) || 'bad_result'));

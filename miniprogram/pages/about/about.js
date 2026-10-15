@@ -7,4 +7,6 @@ Page({
       path: '/pages/index/index',
     };
   },
+
+  goCulture() { wx.navigateTo({ url: '/pages/culture/culture' }); },
 });

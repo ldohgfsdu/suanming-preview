@@ -5,6 +5,7 @@ import { dayPillar, gregorianToJde } from '../../lib/engine.js';
 import { solarToLunar } from '../../lib/lunar.js';
 import { sunTimes } from '../../lib/sun.js';
 import { fmtTermDate, fmtDaysLeft } from '../../lib/display.js';
+import { cultureToggle } from '../../lib/culture-data.js';
 
 const MONTH_CN = ['正', '二', '三', '四', '五', '六', '七', '八', '九', '十', '冬', '腊'];
 const DAY_CN = ['', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
@@ -87,6 +88,9 @@ Page({
     shichen: [],
     nowText: '',
     loading: true,
+    // 就地科普：与档案页同一套开关语义（see lib/culture-data.js cultureToggle）
+    cultureOpenId: '',
+    cultureOpen: null,
   },
 
   onLoad() { this.buildToday(); },
@@ -180,5 +184,18 @@ Page({
     const prev = pages.length >= 2 ? pages[pages.length - 2] : null;
     if (prev && typeof prev.applyToday === 'function') prev.applyToday(solar);
     wx.navigateBack();
+  },
+
+  /** 就地科普：ⓘ 就地展开 / 收起概念解释，不离开今日天时页。 */
+  onCultureInfo(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    const next = cultureToggle(this.data.cultureOpenId, id);
+    if (next) this.setData(next);
+  },
+
+  goCultureEntry(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/culture-detail/culture-detail?id=${id}` });
   },
 });

@@ -512,7 +512,7 @@ Page({
     try {
       f = computeArchive(calcInput.y, calcInput.m, calcInput.d, calcHour, lon);
     } catch (e) {
-      const msg = String((e && e.message) || '');
+      const msg = String((e && /** @type {any} */ (e).message) || '');
       console.error('[archive] computeArchive 失败：', msg);
       wx.showToast({ title: /^range\s/.test(msg) ? '仅支持 1900-2100 年' : '生成失败请重试', icon: 'none' });
       return;
@@ -532,7 +532,7 @@ Page({
         try {
           before = computeArchive(calcInput.y, calcInput.m, calcInput.d, calcHour, null);
         } catch (e) {
-          console.warn('[archive] 基线计算失败：', String((e && e.message) || e));
+          console.warn('[archive] 基线计算失败：', String((e && /** @type {any} */ (e).message) || e));
         }
         const beforeDayGanz = before && before.four && before.four.day ? before.four.day.ganz : null;
         const beforeHourGanz = before && before.four && before.four.hour ? before.four.hour.ganz : null;
@@ -547,7 +547,10 @@ Page({
         }
         if (pieces.length === 0 && corIdx !== rawIdx) pieces.push(`时辰：${SHICHEN[rawIdx].name} → ${SHICHEN[corIdx].name}`);
         const title = (dayChanged || dayPillarChanged) ? '真太阳时校正跨日' : '时辰变更提示';
-        const offTxt = `${f.trueSolar.offsetMinutes > 0 ? '+' : ''}${f.trueSolar.offsetMinutes} 分钟`;
+        // 本分支由上方的 !f.trueSolar.degraded 守卫，offsetMinutes 必非 null；
+        // 这里显式收窄，避免把 null 串进文案（历史 bug 曾打出「null 分钟」）。
+        const offMin = f.trueSolar.offsetMinutes != null ? f.trueSolar.offsetMinutes : 0;
+        const offTxt = `${offMin > 0 ? '+' : ''}${offMin} 分钟`;
         const dstHead = civil && civil.dstApplied
           ? `出生钟表：${input.y}年${input.m}月${input.d}日 ${this.data.hourLabel}（夏时制）\n标准北京时间：${civil.y}-${pad(civil.m)}-${pad(civil.d)} ${pad(civil.hour)}:${pad(civil.minute)}\n`
           : '';
@@ -642,7 +645,7 @@ Page({
         success: (res) => { if (res && res.eventChannel) res.eventChannel.emit('archive', { result }); },
       });
     } catch (err) {
-      console.error('[archive] commitResult 失败：', (err && err.message) || err);
+      console.error('[archive] commitResult 失败：', /** @type {any} */ (err).message || err);
       wx.showToast({ title: '生成失败请重试', icon: 'none' });
     }
   },
@@ -734,6 +737,7 @@ Page({
   goHistory() { wx.navigateTo({ url: '/pages/history/history' }); },
   goToday() { wx.navigateTo({ url: '/pages/today/today' }); },
   goTerms() { wx.navigateTo({ url: '/pages/terms/terms' }); },
+  goCulture() { wx.navigateTo({ url: '/pages/culture/culture' }); },
 
   applyToday(solar) {
     if (!solar) return;

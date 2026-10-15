@@ -1,0 +1,72 @@
+<view class="page" wx:if="{{entry}}">
+
+  <!-- 条目头 -->
+  <view class="hero">
+    <view class="hero-glyph">{{entry.glyph}}</view>
+    <view class="hero-main">
+      <view class="hero-name">{{entry.name}}</view>
+      <view class="hero-cat">{{entry.catName}}</view>
+    </view>
+  </view>
+  <view class="summary">{{entry.summary}}</view>
+
+  <!-- 概念定义 -->
+  <view class="card">
+    <view class="card-title">概念定义</view>
+    <view class="card-body">{{entry.definition}}</view>
+  </view>
+
+  <!-- 背景渊源 -->
+  <view class="card">
+    <view class="card-title">背景渊源</view>
+    <view class="card-body">{{entry.origin}}</view>
+  </view>
+
+  <!-- 属性速览 -->
+  <view class="card" wx:if="{{entry.attrs && entry.attrs.length}}">
+    <view class="card-title">属性速览</view>
+    <view class="card-body">
+      <view class="kv" wx:for="{{entry.attrs}}" wx:for-item="a" wx:key="k">
+        <text class="k">{{a.k}}</text>
+        <text class="v">{{a.v}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 数据表（天干 / 地支 / 八卦 / 节气等） -->
+  <view class="card" wx:if="{{entry.table}}">
+    <view class="card-title">{{entry.table.title || '数据一览'}}</view>
+    <view class="tbl">
+      <view class="tbl-row tbl-head">
+        <view class="tbl-cell" wx:for="{{entry.table.head}}" wx:for-item="h" wx:key="*this">{{h}}</view>
+      </view>
+      <view class="tbl-row" wx:for="{{entry.table.rows}}" wx:for-index="ri" wx:key="ri">
+        <view class="tbl-cell" wx:for="{{row}}" wx:for-item="cell" wx:key="*this">{{cell}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分节详解 -->
+  <block wx:for="{{entry.sections}}" wx:for-item="s" wx:key="title">
+    <view class="card">
+      <view class="card-title">{{s.title}}</view>
+      <view class="card-body">{{s.body}}</view>
+    </view>
+  </block>
+
+  <!-- 相互关联 -->
+  <view class="card" wx:if="{{related.length}}">
+    <view class="card-title">相互关联</view>
+    <view class="rel" wx:for="{{related}}" wx:for-item="r" wx:key="id" data-id="{{r.id}}" bindtap="goRelated">
+      <view class="rel-head">
+        <text class="rel-name">{{r.name}}</text>
+        <text class="rel-arrow">›</text>
+      </view>
+      <view class="rel-text">{{r.text}}</view>
+    </view>
+  </view>
+
+  <!-- 出处与声明 -->
+  <view class="source">参考资料：{{entry.source}}</view>
+  <view class="foot-note">本页内容整理自公开典籍与通说，仅作传统文化科普，不构成任何专业建议。</view>
+</view>

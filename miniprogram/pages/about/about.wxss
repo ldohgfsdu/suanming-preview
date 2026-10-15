@@ -38,3 +38,7 @@
   flex-shrink: 0;
 }
 .kv .v { color: var(--ink); flex: 1; }
+.entry-link {
+  color: var(--accent);
+  font-weight: 600;
+}

@@ -9,9 +9,27 @@
       <view class="pillar-meta"><text class="pillar-label">{{item.label}}</text><text class="pillar-elem">{{item.element || '时辰未知'}}</text></view>
     </view>
   </view>
+  <view class="concept-hint" wx:if="{{r.pillars && r.pillars.length}}">
+    <text>年、月、日、时各配一组干支，年柱以立春为界</text>
+    <text class="info" data-id="ganzhi-nian" bindtap="onCultureInfo">ⓘ</text>
+  </view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'ganzhi-nian'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
+  </view>
   <view class="hour-unknown-hint" wx:if="{{r.hourUnknown}}">出生时刻未选择，时柱以「时辰未知」占位。</view>
 
-  <view class="kv" wx:if="{{r.lunarText}}"><text class="k">农历</text><text class="v">{{r.lunarText}}<text wx:if="{{r.lunarApprox}}" class="approx">（朔日前后±1天）</text></text></view>
+  <view class="kv" wx:if="{{r.lunarText}}"><text class="k">农历</text><text class="v">{{r.lunarText}}<text wx:if="{{r.lunarApprox}}" class="approx">（朔日前后±1天）</text><text class="info" data-id="nongli" bindtap="onCultureInfo">ⓘ</text></text></view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'nongli'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
+  </view>
   <view class="kv kv-place">
     <text class="k">出生地点</text>
     <view class="v place-block">
@@ -25,14 +43,28 @@
   <view class="cross-day-banner" wx:if="{{r.dstNote}}">{{r.dstNote}}</view>
   <view class="kv" wx:if="{{r.tsDateTime}}">
     <text class="k">真太阳时<text wx:if="{{r.crossDay}}" class="kv-tag">跨日</text></text>
-    <text class="v">{{r.tsDateTime}}</text>
+    <text class="v">{{r.tsDateTime}}<text class="info" data-id="zhensunshi" bindtap="onCultureInfo">ⓘ</text></text>
   </view>
-  <view class="kv" wx:if="{{r.trueSolar && r.trueSolar !== '未提供地点'}}"><text class="k">修正量</text><text class="v">{{r.trueSolar}}</text></view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'zhensunshi'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
+  </view>
+  <view class="kv" wx:if="{{r.trueSolar && r.trueSolar !== '未提供地点'}}"><text class="k">修正量<text class="info" data-id="junshicha" bindtap="onCultureInfo">ⓘ</text></text><text class="v">{{r.trueSolar}}</text></view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'junshicha'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
+  </view>
   <view class="cross-day-banner" wx:if="{{r.crossDay && r.canonDateText}}">真太阳时校正后已进入相邻历日（{{r.canonDateText}}），相关历法数据均按校正后的时间计算。</view>
 
   <view class="divider"></view>
 
-  <view class="section-title">五行四柱字数</view>
+  <view class="section-title">五行四柱字数<text class="info" data-id="wuxing" bindtap="onCultureInfo">ⓘ</text></view>
   <view class="tally" wx:if="{{r.tally && r.tally.length}}">
     <view class="tally-row {{item.empty ? 'is-empty' : ''}}" wx:for="{{r.tally}}" wx:key="name">
       <view class="tally-name">{{item.name}}</view>
@@ -41,21 +73,42 @@
     </view>
   </view>
   <view class="tally" wx:else><view class="tally-empty">—</view></view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'wuxing'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
+  </view>
 
   <view class="divider"></view>
 
-  <view class="section-title">节气</view>
+  <view class="section-title">节气<text class="info" data-id="jieqi" bindtap="onCultureInfo">ⓘ</text></view>
   <view class="kv"><text class="k">上一个节气</text><text class="v">{{r.prevTerm}}</text></view>
   <view class="kv"><text class="k">下一个节气</text><text class="v">{{r.nextTerm}}</text></view>
   <view class="kv"><text class="k">距下节气</text><text class="v">{{r.daysToNext}}</text></view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'jieqi'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
+  </view>
 
   <view class="divider"></view>
 
-  <view class="section-title">月相<text class="section-inline" wx:if="{{r.moonPhase}}">　{{r.moonPhase}}</text></view>
+  <view class="section-title">月相<text class="info" data-id="shuowang-yue" bindtap="onCultureInfo">ⓘ</text><text class="section-inline" wx:if="{{r.moonPhase}}">　{{r.moonPhase}}</text></view>
   <view class="kv"><text class="k">朔望月龄</text><text class="v">{{r.moonAge || '—'}}</text></view>
   <view class="mb-bar" wx:if="{{r.moonLit}}">
     <view class="mb-track"><view class="mb-fill" style="width:{{r.moonLit.litPct}}%"></view></view>
     <text class="mb-pct">{{r.moonLit.filling}} · 照亮约 {{r.moonLit.litPct}}%</text>
+  </view>
+  <view class="culture-inline" wx:if="{{cultureOpenId === 'shuowang-yue'}}">
+    <view class="culture-inline-head">
+      <text class="culture-inline-name">{{cultureOpen.glyph}} {{cultureOpen.name}}</text>
+      <text class="culture-inline-more" data-id="{{cultureOpen.id}}" catchtap="goCultureEntry">读完整科普 ›</text>
+    </view>
+    <view class="culture-inline-body">{{cultureOpen.definition}}</view>
   </view>
 
   <view class="divider"></view>
@@ -91,6 +144,12 @@
       <view class="insight-item-content">解读生成暂不可用。上方历法档案由本地确定性引擎计算，不受此影响，可正常查看与使用。</view>
     </view>
     <button class="btn-insight insight-retry" bindtap="onGenerateInsight">重新生成解读</button>
+  </view>
+
+  <view class="divider"></view>
+  <view class="section-title">相关概念 · 传统文化科普</view>
+  <view class="culture-chips">
+    <view class="culture-chip" wx:for="{{cultureLinks}}" wx:key="id" data-id="{{item.id}}" bindtap="goCultureEntry">{{item.name}}</view>
   </view>
 
   <view class="note">本档案由真实天文历法计算得出：结果均源自真太阳时、天文节气等历法数据，仅供传统文化研究与娱乐参考。</view>

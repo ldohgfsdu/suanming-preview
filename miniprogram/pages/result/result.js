@@ -1,6 +1,7 @@
 // pages/result/result.js — 独立「历法档案」结果页。
 // 纯展示 + 保存档案卡片；AI 只解释已算好的事实，失败自动降级本地规则文本。
 import { resolveInsight, buildFacts, insightCacheKey, OUTPUT_VERSION, PROMPT_VER } from '../../lib/insight.js';
+import { cultureToggle } from '../../lib/culture-data.js';
 
 // 用户最多等 8 秒；云函数服务端上限更长，仅用于让已开始的模型调用有机会完成并进入服务端缓存。
 const INSIGHT_TIMEOUT_MS = 8000;
@@ -62,6 +63,22 @@ Page({
     insightSections: [],
     insightLimitations: [],
     insightModel: '',
+    // 就地科普：点 ⓘ 在当前位置展开条目摘要，不跳页。cultureOpenId 同时充当面板开关。
+    cultureOpenId: '',
+    cultureOpen: null,
+    cultureLinks: [
+      { id: 'ganzhi-nian', name: '干支纪年' },
+      { id: 'tiangan', name: '天干' },
+      { id: 'dizhi', name: '地支' },
+      { id: 'wuxing', name: '五行' },
+      { id: 'shichen', name: '时辰' },
+      { id: 'jieqi', name: '节气' },
+      { id: 'nongli', name: '农历' },
+      { id: 'shuowang-yue', name: '月相' },
+      { id: 'zhensunshi', name: '真太阳时' },
+      { id: 'junshicha', name: '均时差' },
+      { id: 'xiading-shi', name: '夏令时' },
+    ],
   },
 
   onLoad() {
@@ -113,9 +130,11 @@ Page({
     console.info('[insight] cloudReady =', cloudReady,
       '| env =', (app && app.globalData && app.globalData.cloudEnvId) || '(空)');
 
+    // setTimeout 在微信小程序返回 number，Node 类型下是 Timeout；按小程序语义取 number。
+    /** @type {number} */
     let timerId = 0;
     const timeout = new Promise((resolve) => {
-      timerId = setTimeout(() => resolve(null), INSIGHT_TIMEOUT_MS);
+      timerId = /** @type {number} */ (/** @type {unknown} */ (setTimeout(() => resolve(null), INSIGHT_TIMEOUT_MS)));
       this._insightTimer = timerId;
     });
 
@@ -126,7 +145,7 @@ Page({
 
     let payload = settled;
     if (!payload) {
-      payload = resolveInsight(archiveResult, { cloudAvailable: false });
+      payload = await resolveInsight(archiveResult, { cloudAvailable: false });
       payload.reason = 'timeout';
       // 晚到的成功结果只写本次会话缓存；跨会话由服务端模型版本缓存负责。
       work.then((res) => {
@@ -281,5 +300,22 @@ Page({
 
   goBackHome() {
     wx.navigateBack();
+  },
+
+  goCultureEntry(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    if (!id) return;
+    wx.navigateTo({ url: `/pages/culture-detail/culture-detail?id=${id}` });
+  },
+
+  /**
+   * 就地科普：ⓘ 就地展开 / 收起该概念的条目摘要，避免为查一个名词而离开档案。
+   * 开关语义在 lib/culture-data.js 的 cultureToggle 里统一定义；
+   * 死链返回 null，此处静默忽略——不能让用户白等一次无果的跳转。
+   */
+  onCultureInfo(e) {
+    const id = e && e.currentTarget && e.currentTarget.dataset && e.currentTarget.dataset.id;
+    const next = cultureToggle(this.data.cultureOpenId, id);
+    if (next) this.setData(next);
   },
 });

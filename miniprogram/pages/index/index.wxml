@@ -130,6 +130,7 @@
 
   <view class="foot-links">
     <view class="about-link" bindtap="goHistory"><text>历史档案</text><text class="about-arrow">›</text></view>
+    <view class="about-link" bindtap="goCulture"><text>传统文化科普 · 干支 五行 八卦 节气</text><text class="about-arrow">›</text></view>
     <view class="about-link" bindtap="goAbout"><text>关于本工具 · 算法说明 · 免责声明</text><text class="about-arrow">›</text></view>
   </view>
 

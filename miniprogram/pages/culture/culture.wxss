@@ -1,0 +1,163 @@
+/* pages/culture/culture.wxss — 传统文化科普库列表页 */
+.page {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+/* 页首说明 */
+.intro {
+  padding: 8rpx 8rpx 24rpx;
+}
+.intro-title {
+  font-size: 38rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.intro-sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* 搜索框 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  height: 80rpx;
+  box-shadow: 0 2rpx 8rpx rgba(44, 42, 38, 0.04);
+}
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+  color: var(--ink);
+  height: 100%;
+}
+.search-input .ph,
+.ph {
+  color: var(--muted);
+}
+.search-clear {
+  width: 44rpx;
+  height: 44rpx;
+  line-height: 40rpx;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--muted);
+  font-size: 30rpx;
+  flex-shrink: 0;
+}
+
+/* 分类筛选条 */
+.cats {
+  white-space: nowrap;
+  margin: 20rpx -24rpx 0;
+  padding: 0 24rpx;
+  width: 100%;
+}
+.cat {
+  display: inline-block;
+  padding: 10rpx 28rpx;
+  margin-right: 16rpx;
+  border-radius: 999rpx;
+  background: var(--tint);
+  color: var(--body);
+  font-size: 24rpx;
+  line-height: 1.5;
+}
+.cat.on {
+  background: var(--btn);
+  color: var(--btn-text);
+}
+
+/* 结果计数 */
+.count {
+  padding: 24rpx 8rpx 12rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
+/* 条目卡片 */
+.card {
+  display: flex;
+  align-items: center;
+  background: var(--card);
+  border-radius: 20rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(44, 42, 38, 0.04);
+}
+.card-glyph {
+  width: 84rpx;
+  height: 84rpx;
+  line-height: 84rpx;
+  text-align: center;
+  border-radius: 20rpx;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+.card-main {
+  flex: 1;
+  margin: 0 20rpx;
+  min-width: 0;
+}
+.card-head {
+  display: flex;
+  align-items: baseline;
+}
+.card-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.card-cat {
+  margin-left: 16rpx;
+  font-size: 20rpx;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.card-summary {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--body);
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.card-arrow {
+  color: var(--muted);
+  font-size: 34rpx;
+  flex-shrink: 0;
+}
+
+/* 空状态 */
+.empty {
+  padding: 120rpx 0;
+  text-align: center;
+}
+.empty-text {
+  font-size: 28rpx;
+  color: var(--body);
+}
+.empty-sub {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+}
+
+.foot-note {
+  padding: 24rpx 8rpx 40rpx;
+  text-align: center;
+  font-size: 20rpx;
+  color: var(--muted);
+  line-height: 1.6;
+}

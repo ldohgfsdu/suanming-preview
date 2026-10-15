@@ -1,0 +1,62 @@
+<view class="page">
+
+  <!-- 页首说明 -->
+  <view class="intro">
+    <view class="intro-title">读懂档案里的时间文化</view>
+    <view class="intro-sub">阴阳、五行、天干地支、八卦、节气——这些概念的来历与关联，共 {{total}} 条</view>
+  </view>
+
+  <!-- 搜索框 -->
+  <view class="search-bar">
+    <input
+      class="search-input"
+      placeholder="搜索概念，如：五行、生肖、春分"
+      placeholder-class="ph"
+      value="{{keyword}}"
+      confirm-type="search"
+      bindinput="onKeywordInput"
+      bindconfirm="onKeywordInput"
+    />
+    <view wx:if="{{keyword}}" class="search-clear" bindtap="onClearKeyword">×</view>
+  </view>
+
+  <!-- 分类筛选 -->
+  <scroll-view class="cats" scroll-x enable-flex show-scrollbar="{{false}}">
+    <view
+      wx:for="{{cats}}"
+      wx:key="id"
+      class="cat {{activeCat === item.id ? 'on' : ''}}"
+      data-id="{{item.id}}"
+      bindtap="onCatTap"
+    >{{item.name}}</view>
+  </scroll-view>
+
+  <!-- 结果计数 -->
+  <view class="count" wx:if="{{list.length}}">
+    <text wx:if="{{keyword}}">「{{keyword}}」找到 {{list.length}} 条</text>
+    <text wx:else>共 {{list.length}} 条</text>
+  </view>
+
+  <!-- 条目列表 -->
+  <view class="list" wx:if="{{list.length}}">
+    <view class="card" wx:for="{{list}}" wx:for-item="item" wx:key="id" data-id="{{item.id}}" bindtap="goEntry">
+      <view class="card-glyph">{{item.glyph}}</view>
+      <view class="card-main">
+        <view class="card-head">
+          <text class="card-name">{{item.name}}</text>
+          <text class="card-cat">{{item.catName}}</text>
+        </view>
+        <view class="card-summary">{{item.summary}}</view>
+      </view>
+      <view class="card-arrow">›</view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:else class="empty">
+    <view class="empty-text">没有找到相关概念</view>
+    <view class="empty-sub">换个关键词试试，比如「干支」「节气」「八卦」</view>
+  </view>
+
+  <view class="foot-note">内容整理自公开典籍与通说，仅作传统文化科普</view>
+</view>

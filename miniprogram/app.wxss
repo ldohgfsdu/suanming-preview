@@ -30,3 +30,44 @@ page {
     --btn-text: #ffffff;
   }
 }
+
+/* ── 就地科普：ⓘ 锚点与就地展开面板（archive 页与今日天时页共用） ── */
+/* ⓘ 放在标签/标题末尾。padding 撑到 44rpx 见方，保证在密集表格里也点得中。 */
+.info {
+  margin-left: 10rpx;
+  padding: 6rpx 8rpx;
+  color: var(--accent);
+  font-size: 26rpx;
+  line-height: 1.2;
+}
+
+/* 展开面板：紧贴被点开的概念所在位置，就地解释，不把人带离当前页 */
+.culture-inline {
+  margin: 12rpx 0 4rpx;
+  padding: 18rpx 22rpx;
+  border-radius: 14rpx;
+  background: var(--tint);
+  border-left: 4rpx solid var(--accent);
+}
+.culture-inline-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+.culture-inline-name {
+  font-size: 25rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.culture-inline-more {
+  font-size: 22rpx;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+.culture-inline-body {
+  font-size: 24rpx;
+  color: var(--body);
+  line-height: 1.75;
+}

@@ -1,0 +1,166 @@
+/* pages/culture-detail/culture-detail.wxss — 传统文化科普条目详情页 */
+.page {
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+/* 条目头 */
+.hero {
+  display: flex;
+  align-items: center;
+  padding: 8rpx 8rpx 20rpx;
+}
+.hero-glyph {
+  width: 108rpx;
+  height: 108rpx;
+  line-height: 108rpx;
+  text-align: center;
+  border-radius: 24rpx;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 52rpx;
+  flex-shrink: 0;
+}
+.hero-main {
+  margin-left: 24rpx;
+}
+.hero-name {
+  font-size: 44rpx;
+  font-weight: 600;
+  color: var(--ink);
+}
+.hero-cat {
+  display: inline-block;
+  margin-top: 10rpx;
+  padding: 4rpx 18rpx;
+  border-radius: 999rpx;
+  background: var(--tint);
+  color: var(--accent);
+  font-size: 20rpx;
+}
+
+.summary {
+  padding: 0 8rpx 28rpx;
+  font-size: 28rpx;
+  color: var(--body);
+  line-height: 1.8;
+  font-weight: 500;
+}
+
+/* 卡片 */
+.card {
+  background: var(--card);
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(44, 42, 38, 0.04);
+}
+.card-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 20rpx;
+}
+.card-body {
+  font-size: 26rpx;
+  color: var(--body);
+  line-height: 1.9;
+}
+.card-body .kv {
+  display: flex;
+  align-items: flex-start;
+  padding: 10rpx 0;
+  font-size: 26rpx;
+}
+.card-body .kv .k {
+  width: 150rpx;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.card-body .kv .v {
+  color: var(--ink);
+  flex: 1;
+  line-height: 1.7;
+}
+
+/* 数据表 */
+.tbl {
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+.tbl-row {
+  display: flex;
+  align-items: stretch;
+}
+/* 斑马纹：表头为第 1 行（奇数），数据行从第 2 行起偶数行着色 */
+.tbl-row:nth-child(even) {
+  background: var(--tint);
+}
+.tbl-row .tbl-cell {
+  flex: 1;
+  padding: 14rpx 8rpx;
+  font-size: 22rpx;
+  color: var(--body);
+  text-align: center;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.tbl-head {
+  background: var(--btn);
+}
+.tbl-head .tbl-cell {
+  color: var(--btn-text);
+  font-weight: 600;
+}
+.tbl-cell:first-child {
+  font-weight: 600;
+  color: var(--ink);
+}
+.tbl-head .tbl-cell:first-child {
+  color: var(--btn-text);
+}
+
+/* 相互关联 */
+.rel {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid var(--line);
+}
+.rel:last-child {
+  border-bottom: none;
+  padding-bottom: 4rpx;
+}
+.rel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rel-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--accent);
+}
+.rel-arrow {
+  color: var(--muted);
+  font-size: 30rpx;
+}
+.rel-text {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: var(--body);
+  line-height: 1.7;
+}
+
+/* 出处与声明 */
+.source {
+  padding: 8rpx 8rpx 16rpx;
+  font-size: 22rpx;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.foot-note {
+  padding: 0 8rpx 40rpx;
+  text-align: center;
+  font-size: 20rpx;
+  color: var(--muted);
+  line-height: 1.6;
+}

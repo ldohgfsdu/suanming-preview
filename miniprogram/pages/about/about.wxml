@@ -36,6 +36,15 @@
     </view>
   </view>
 
+  <!-- 传统文化科普 -->
+  <view class="card">
+    <view class="card-title">传统文化科普</view>
+    <view class="card-body">
+      <view>想读懂档案里的干支、五行与节气？科普库收录阴阳、五行、天干地支、八卦、节气等概念的来历与相互关联，共 16 条，支持检索。</view>
+      <view class="gap entry-link" bindtap="goCulture">进入科普库 ›</view>
+    </view>
+  </view>
+
   <!-- 关于 -->
   <view class="card">
     <view class="card-title">关于</view>

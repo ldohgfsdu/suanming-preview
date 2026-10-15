@@ -185,3 +185,20 @@
   font-size: 21rpx;
   line-height: 1.7;
 }
+
+.culture-chips { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 8rpx 0 12rpx; }
+.culture-chip { padding: 10rpx 24rpx; border-radius: 999rpx; background: var(--tint); color: var(--accent); font-size: 24rpx; line-height: 1.5; }
+
+/* ── 就地科普：本页专有部分（.info 与 .culture-inline* 已在 app.wxss 全局） ── */
+/* 四柱下方的一行说明，带 ⓘ */
+.concept-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14rpx;
+  font-size: 21rpx;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.concept-hint .info { margin-left: 0; margin-right: -8rpx; }
+

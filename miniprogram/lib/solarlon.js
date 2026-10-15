@@ -21,7 +21,13 @@
  *   - ΔT：Espenak & Meeus（NASA TP-2006-214141）分段多项式，移植自 Core 的 DeltaT 实现。
  *
  * 本模块只产出“视黄经”（确定性实数），不缓存、不插值；engine.termJde 以二分法求解。
- * 保留 engine.solarLon（Meeus 低精度）作为兼容/baseline，不删。
+ *
+ * 单一事实源说明：
+ *   `engine.solarLon` 只是本模块 `solarLongitude` 的转发（历史命名保留），
+ *   **二者是同一个高精度实现**，不存在「低精度 Meeus」生产路径。
+ *   一致性由 tests/unit/astronomy-audit.test.mjs 的 A18 断言（<1e-9）钉住。
+ *   `solarLongitudeLow` 是 Meeus 低精度参考实现，仅供人工调试/对拍用，
+ *   **生产路径不使用**（sun.js / engine.js 均走高精度）。
  */
 'use strict';
 
@@ -151,7 +157,13 @@ export function solarLongitude(jdeUtc) {
   return mod360((s + dp + ab) * RAD);
 }
 
-/** 低精度 Meeus 视黄经（保留兼容性，见 engine.solarLon 注释）。 */
+/**
+ * 低精度 Meeus 视黄经（太阳几何黄经，不含岁差/章动/光行差/FK5）。
+ *
+ * **仅用于人工调试与对拍参考，生产路径不使用**：节气求解（engine.solarLon → 本文件
+ * solarLongitude）与日出日落（sun.js）都走高精度实现。
+ * 保留它是为了在排查精度问题时有一个可手算的对照量，不是 baseline。
+ */
 export function solarLongitudeLow(jde) {
   const T = (jde - 2451545) / 36525;
   let L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;

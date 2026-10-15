@@ -24,7 +24,8 @@ export const BANNED_WORDS = [
   '旺衰', '喜用', '用神', '忌神',
   '十神', '藏干', '神煞', '空亡', '胎元', '命宫', '身宫',
 ];
-const EVIDENCE_IDS = new Set(['e_term', 'e_lunar', 'e_pillars', 'e_wuxing', 'e_solar']);
+// 导出：这是与云函数共享的契约之一，由 tests/unit/insight-contract.test.mjs 强制两侧一致。
+export const EVIDENCE_IDS = new Set(['e_term', 'e_lunar', 'e_pillars', 'e_wuxing', 'e_solar']);
 
 export function detectBanned(text) {
   if (!text) return [];
@@ -242,13 +243,27 @@ export function validateInsight(insight, facts) {
   return Array.from(new Set(errors));
 }
 
-/** 统一入口：本地降级优先，云端成功则覆盖。 */
+/**
+ * 统一入口：本地降级优先，云端成功则覆盖。
+ *
+ * 恒返回 Promise —— 本函数早期版本在 `cloudAvailable:false` 时返回**普通对象**，
+ * 导致调用方 `Promise.race([work, …])` 虽能工作，但后续任何
+ * `resolveInsight(...).then(...)` 都会抛 "then is not a function"。
+ * checkJs 在 tests/e2e 之前抓到了这条（TS2339），故统一为异步形态。
+ *
+ * @param {object} archiveResult computeArchive 的返回
+ * @param {{ cloudAvailable?: boolean }} [opts]
+ * @returns {Promise<{
+ *   insight: object|null, facts: object|null,
+ *   usedAI: boolean, reason: string, cacheKey: string
+ * }>}
+ */
 export function resolveInsight(archiveResult, opts) {
   const facts = buildFacts(archiveResult);
   const local = ruleBasedInsight(facts);
   const cacheKey = insightCacheKey(facts);
   const fallback = { insight: local, facts, usedAI: false, reason: 'local_default', cacheKey };
-  if (!opts || !opts.cloudAvailable) return fallback;
+  if (!opts || !opts.cloudAvailable) return Promise.resolve(fallback);
 
   return callCloudInsight(facts)
     .then((res) => {

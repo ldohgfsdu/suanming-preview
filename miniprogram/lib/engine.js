@@ -56,6 +56,12 @@ export function jdeToGregorian(jde) {
 }
 
 // ---- solar apparent longitude ----
+/**
+ * 太阳视黄经（0–360°，UT 儒略日入口）。
+ * 转发到 solarlon.solarLongitude —— 那是唯一的生产实现（VSOP87B + 岁差 +
+ * 章动 + 光行差 + FK5 + ΔT→TT）。本函数只是历史命名的入口，
+ * 与 `solarLon` 同精度；A18 测试已断言二者 <1e-9。
+ */
 export function solarLon(jde) {
   return solarLongitude(jde);
 }
@@ -81,10 +87,21 @@ export function termJde(ord, year) {
   return solveLonWindow(target, guess, guess);
 }
 
+/**
+ * 就近搜索某个节气序在 jde 前后的最近一次发生。
+ * 恒返回非 null：循环至少执行一次且 bestD 初值为 Infinity，
+ * 首次比较必然命中；jdeToGregorian 对有限输入必返回有限年。
+ * @param {number} ord 0..23
+ * @param {number} jde 目标儒略日
+ * @returns {{ year: number, jde: number }}
+ */
 export function termJdeNear(ord, jde) {
   const y = jdeToGregorian(jde).y;
-  let best = null, bestD = Infinity;
-  for (let yy = y - 1; yy <= y + 1; yy++) {
+  // 以第一个候选作种子，保证返回值恒非 null（bestD 初值 Infinity 的做法
+  // 会把「必不可能发生」的 null 引入调用方，迫使每处都判空）。
+  let best = { year: y - 1, jde: termJde(ord, y - 1) };
+  let bestD = Math.abs(best.jde - jde);
+  for (let yy = y; yy <= y + 1; yy++) {
     const td = termJde(ord, yy);
     const dd = Math.abs(td - jde);
     if (dd < bestD) { bestD = dd; best = { year: yy, jde: td }; }

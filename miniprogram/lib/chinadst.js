@@ -118,9 +118,12 @@ export function classifyWall(y, mo, d, h, mi) {
  *
  * @param {number} y @param {number} mo @param {number} d
  * @param {number} h @param {number} mi
- * @param {{ foldChoice?: 'earlier'|'later' }} [opts] FOLD 时的显式选择
- * @returns {{ ok: true, epochMilli: number, dstApplied: boolean, state: string }
- *          | { ok: false, state: string, reason: string }}
+ * @param {{ foldChoice?: 'earlier'|'later'|null }} [opts] FOLD 时的显式选择；
+ *   传 null 与不传等价，均按「未选择」处理并返回 dst_fold_unresolved。
+ * @returns {(
+ *   { ok: true, epochMilli: number, dstApplied: boolean, state: string }
+ *   | { ok: false, state: string, reason: string, message: string }
+ * )}
  */
 export function resolveWallToInstant(y, mo, d, h, mi, opts) {
   const state = classifyWall(y, mo, d, h, mi);
@@ -174,7 +177,9 @@ export function resolveWallToInstant(y, mo, d, h, mi, opts) {
  *
  * @param {number|null} placeLon 出生地经度（东经为正）
  * @param {string|null} timezoneId IANA 时区
- * @returns {{ degraded: boolean, reason?: string, tzCentralMeridianLon?: number }}
+ * @returns {{ degraded: boolean, reason?: string, tzCentralMeridianLon?: number | null }}
+ *   非中国时区无中央经线概念时，tzCentralMeridianLon 为 null 且 degraded 为 false
+ *   （不误伤海外）。
  */
 export function assessLonTimezoneConsistency(placeLon, timezoneId) {
   if (placeLon == null || !Number.isFinite(placeLon)) {

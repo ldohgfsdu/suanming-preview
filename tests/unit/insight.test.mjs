@@ -10,16 +10,13 @@ import { fmtTrueSolarMinutes } from '../../miniprogram/lib/display.js';
 import {
   buildFacts, ruleBasedInsight, ruleBasedInsight as realRuleBasedInsight,
   insightCacheKey, OUTPUT_VERSION, PROMPT_VER,
+  BANNED_WORDS,
 } from '../../miniprogram/lib/insight.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BANNED_WORDS = [
-  '算命', '占卜', '算卦', '卜卦', '运势', '运程', '流年', '大运', '注定', '命中',
-  '吉凶', '宜忌', '化解', '犯太岁', '开运', '招财', '转运', '合婚', '择日', '看日子', '八字算',
-  '排盘', '预测',
-  '旺衰', '喜用', '用神', '忌神', '十神', '藏干', '神煞', '空亡', '胎元', '命宫', '身宫',
-];
+// BANNED_WORDS 直接 import 客户端，不再本地抄一份。
+// 「客户端 / 云函数 / 测试」三副本的一致性由 tests/unit/insight-contract.test.mjs 强制。
 
 const FACT_SAMPLE = {
   pillars: [
@@ -138,6 +135,9 @@ test('I12 云函数服务端校验：事实校验必须先于模型调用，两�
   assert.ok(main.indexOf('validateFacts(facts)') < main.indexOf('callModel('), '校验必须先于模型调用');
   const mirror = readFileSync(resolve(__dirname, '../../miniprogram/cloudfunctions/insight/index.js'), 'utf8');
   assert.equal(mirror, fn, 'cloudfunctions/ 与 miniprogram/cloudfunctions/ 须同步');
+  // 注意：这里只比 index.js。model-policy.js / package.json / config.json 的一致性
+  // 与「文件集合本身是否相同」由 scripts/sync-cloudfunctions.mjs 负责，
+  // 其自校验（含注入漂移的负向测试）见 tests/unit/cloudfunctions-sync.test.mjs。
 });
 
 function extractServerValidator() {

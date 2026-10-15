@@ -51,6 +51,10 @@ const steps = [
   ['版本守卫', [join(repoRoot, 'scripts', 'check-node-version.mjs'), 'verify-node']],
   ['隐私字段自检', [join(repoRoot, 'scripts', 'check-appjson-privacy.mjs')]],
   ['typecheck', [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.json']],
+  // miniprogram/ 下 3747 行生产 JS。2026-10-08 的 hourPillar 导入错位就出在这里 ——
+  // 该目录不在主 tsconfig 的 include 里，typecheck 完全覆盖不到 .js，事后只能靠
+  // import-contract.test.mjs 补漏。这里补齐：抓「名字写错/属性不存在/返回类型不符」。
+  ['typecheck:mini', [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.mini.json']],
   ['lint', [join(repoRoot, 'node_modules', 'eslint', 'bin', 'eslint.js'), '.']],
   ['测试构建', [join(repoRoot, 'scripts', '_clean-dist.mjs')]],
   ['测试编译', [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.test.json']],
@@ -85,4 +89,4 @@ console.log(`[gate] nodeBin = ${nodeBin}`);
 for (const [label, args] of steps) run(label, args);
 for (const [label, args] of testRuns) run(label, args);
 
-console.log('\n[gate] ✓ 全部门禁通过（版本守卫 → 隐私字段自检 → typecheck → lint → 测试构建 → TS 单测 → mjs 单测）');
+console.log('\n[gate] 全部门禁通过: 版本守卫 → 隐私字段自检 → typecheck → typecheck:mini → lint → 测试构建 → 测试编译 → TS 单测 → mjs 单测');

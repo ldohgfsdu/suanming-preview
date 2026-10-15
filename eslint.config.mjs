@@ -59,6 +59,28 @@ export default [
     },
     rules: JS_RULES,
   },
+  // types/wechat.d.ts —— 微信运行时全局声明（tsconfig.mini.json 检查 miniprogram/ 的生产 JS）。
+  // 该文件刻意使用 any，理由见文件内注释与下方说明；不逐处写 eslint-disable-next-line，
+  // 因为「为什么放宽」必须集中在一处可审查，而不是散落在 8 个 disable 注释里。
+  {
+    files: ['types/**/*.d.ts'],
+    languageOptions: {
+      parser,
+      parserOptions: { ecmaVersion: 2022, sourceType: 'module' },
+      globals: { ...globals.node, ...globals.es2021 },
+    },
+    plugins: { '@typescript-eslint': tseslint },
+    rules: {
+      // 三类 any 都是「第三方 API 表面」的必要宽松，不是懒：
+      //   1. Page/App/Component/Behavior 的 options：一旦有类型，this 就不再是 any，
+      //      页面里 this.data.xxx / this.foo() 全变 unknown（实测 +200 个 TS2571）。
+      //      精确描述需要完整微信类型库。
+      //   2. getStorageSync 返回：storage 内容由调用点各自用 `|| []` 兜底。
+      //   3. applyHistory 的 record：历史档案快照字段由 pages/index 自定义。
+      // 真正的护栏是 tests/unit/import-contract.test.mjs + 189 个单测。
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
   // 云函数是 CommonJS；此配置覆盖 miniprogram/cloudfunctions/ 镜像的 sourceType。
   {
     files: ['**/cloudfunctions/**/*.js'],
@@ -79,6 +101,6 @@ export default [
     rules: JS_RULES,
   },
   {
-    ignores: ['node_modules/', 'dist/', 'dist-test/', '.git/', '.tmp/', 'package-lock.json'],
+    ignores: ['node_modules/', 'dist/', 'dist-test/', '.git/', '.tmp/', '.tmp-*', 'tests/e2e/bridge-ide.mjs', 'package-lock.json'],
   },
 ];

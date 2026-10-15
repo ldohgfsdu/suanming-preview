@@ -1,0 +1,34 @@
+{
+  "//extends": "复用主工程的严格开关（strict / exactOptionalPropertyTypes / noImplicitOverride …）",
+
+  "extends": "./tsconfig.json",
+
+  "//allowJs+checkJs": "把 miniprogram/ 下 3747 行生产 JS 纳入检查。2026-10-08 的 hourPillar 导入错位正是这类事故 —— typecheck 覆盖不到 .js，只能靠 import-contract.test.mjs 事后补漏。",
+
+  "//exclude": "云函数目录单列：其 CJS + 未安装的 SDK 依赖需要另外的 module/moduleResolution 组合，且已有 insight-model-policy.test.mjs 覆盖纯函数部分。",
+
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+
+    // noImplicitAny 刻意关闭：现存 161 处隐式 any 参数，开启会一次性挡住门禁，
+    // 而补 JSDoc 是纯机械劳动、不改行为，应作为独立的 burn-down 任务逐文件推进。
+    // 当前重点抓 TS2304/TS2339/TS2345/TS2353/TS18047/TS2322 —— 即「名字写错、
+    // 属性不存在、返回类型不符」这类真 bug。
+    "noImplicitAny": false,
+
+    // noUncheckedIndexedAccess 刻意关闭：历法数组下标访问报 possibly-undefined
+    // 的收益低，且门禁全量测试已覆盖 1900/2100 边界。
+    "noUncheckedIndexedAccess": false,
+
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "alwaysStrict": true
+  },
+
+  "include": ["miniprogram/**/*.js", "types/**/*.d.ts"],
+  "exclude": ["node_modules", "miniprogram/cloudfunctions/**"]
+}

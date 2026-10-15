@@ -238,7 +238,7 @@ export function computeArchive(y, m, d, hour = -1, lonDeg = null,
 
   const eot = eotMinutes(jd);
   let tSolar = null, degraded = true;
-  if (Number.isFinite(lonDeg)) {
+  if (lonDeg != null && Number.isFinite(lonDeg)) {
     tSolar = Number((eot + 4 * (lonDeg - 120)).toFixed(2));
     degraded = false;
   }

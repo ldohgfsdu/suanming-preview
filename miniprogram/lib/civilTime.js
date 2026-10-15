@@ -30,6 +30,29 @@ function fromUtcMillisAsBeijingStandard(epochMilli) {
  * @param {number} minute 0..59
  * @param {'earlier'|'later'|null} foldChoice
  */
+/**
+ * 历史墙钟时间 → 标准北京时间（UTC+8）。
+ *
+ * @param {number} y @param {number} m @param {number} d
+ * @param {number} hour 0..23；非整数直接短路为「时辰未知」
+ * @param {number} minute 0..59
+ * @param {'earlier'|'later'|null} [foldChoice] 夏时制拨回重叠时的显式选择
+ * @returns {{
+ *   ok: boolean,
+ *   unknown?: boolean,
+ *   state: string,
+ *   dstApplied?: boolean,
+ *   foldChoice?: 'earlier'|'later'|null,
+ *   epochMilli?: number,
+ *   y?: number, m?: number, d?: number,
+ *   hour?: number, minute?: number, hourDecimal?: number,
+ *   reason?: string, message?: string, needsFoldChoice?: boolean
+ * }}
+ *   三种形态：
+ *     ① 时辰未知       —— 短路返回，不带日期字段
+ *     ② GAP / FOLD未选 —— ok:false，带 reason 与 message
+ *     ③ 已解析          —— ok:true，带标准北京时间各分量与 hourDecimal
+ */
 export function resolveChinaCivilTime(y, m, d, hour, minute, foldChoice = null) {
   if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
     return { ok: true, unknown: true, state: WallState.STANDARD, dstApplied: false };

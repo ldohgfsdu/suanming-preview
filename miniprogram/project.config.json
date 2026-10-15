@@ -1,5 +1,5 @@
 {
-  "description": "Suanming Preview - 东方时间文化档案（东方时间档案）· 基于真实天文历法算法",
+  "description": "输入出生日期、时间与地点，即得一份真实历法档案：四柱干支、节气、农历、月相全部按真太阳时与天文算法现算，不套模板、不作判定；还可一键生成历法文化解读，可保存为档案卡片。",
   "compileType": "miniprogram",
   "libVersion": "3.6.2",
   "appid": "wxd58dc3b769e05f93",

@@ -31,7 +31,16 @@ const DAY_CN = ['', '初一','初二','初三','初四','初五','初六','初�
  * @param month 农历月 1..12（正..腊）
  * @param leap 是否闰月
  * @param day 农历日 1..30
- * @returns { {y,m,d, approx, day, monthName, text} | null }
+ * @returns {{
+ *   jde: number,
+ *   year: number, month: number, day: number,
+ *   solar: string,
+ *   dayName: string, monthName: string,
+ *   leap: boolean,
+ *   approx: boolean
+ * } | null }
+ *   approx 恒为 true：朔日时刻临近子夜时，公历落地日可能有 ±1 边界
+ *   （真实历法误差，非臆造，沿用 lunar.js 的语义）。
  */
 export function lunarToSolar(year, month, leap, day) {
   if (!year || !month || !day) return null;

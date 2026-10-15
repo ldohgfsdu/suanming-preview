@@ -1,4 +1,4 @@
-﻿# Suanming Preview · 东方时间文化档案微信小程序
+# Suanming Preview · 东方时间文化档案微信小程序
 
 > 独立仓库（S-7 裁决：独立承载，非子目录）。
 > 产品事实源：见父目录 `preview-docs/` 冻结文档体系与 `governance/`。
@@ -64,7 +64,8 @@ npm run gate
 ```text
 Node 版本守卫
 → app.json / 生产源码隐私 API 自检
-→ TypeScript typecheck
+→ TypeScript typecheck（shared / engine / insight / scripts / tests）
+→ TypeScript typecheck: mini（miniprogram/ 下 3747 行生产 JS）
 → ESLint
 → 测试构建
 → TS 单测
@@ -73,7 +74,10 @@ Node 版本守卫
 
 GitHub Actions 也只调用这一套门禁，不再维护第二份 CI 流程。
 
-**V4 实测（2026-10-08）：158/158 全绿 = TS 28 + mjs 130，typecheck 0 错、lint 0 错、隐私字段自检通过。**
+**门禁用例数：以 `npm run gate` 当次输出为准**，不在 README 手写具体数字。
+（V4 closure 当次记录为 158 = TS 28 + mjs 130；此后的终验修复又新增了
+`import-contract` / `insight-model-policy` / `insight-contract` /
+`cloudfunctions-sync` 等守卫用例，固定写数字只会再次漂移。）
 
 ## 当前能力边界
 
@@ -85,6 +89,7 @@ GitHub Actions 也只调用这一套门禁，不再维护第二份 CI 流程。
 - **出生地点**：UI 覆盖省/市/区县名称，但当前内置计算坐标是**所属地级行政中心近似坐标**，不是区县级精确坐标；临界输入可在高级设置手动填经度。
 - **今日天时**：统一采用北京时间 + 北京坐标，不再混用设备本地日期与北京日出日落。
 - **历史档案**：v2 保存完整可恢复输入快照（历法模式、日期、时间、性别、地点/手动经度、DST fold 选择），重新生成可恢复原输入；v1 兼容读取后迁移。
+- **传统文化科普**：`pages/culture`（真实渲染列表/实时检索/分类筛选）与 `pages/culture-detail`（详情/关联概念跳转/无效深链兜底）为科普定位的增量扩展页（不在冻结七页 IA 之列，已由 D-006 于治理层追加登记）；知识库 `miniprogram/lib/culture-data.js` 19 条 / 5 分类，全部文案受逐字禁词扫描，AI 说明与科普库口径一致。
 - **AI**：必须用户显式点击；客户端 8 秒即降级；服务端要求 OPENID、校验结构化事实、计算服务端 SHA-256、按文档指纹 + prompt + model + outputVersion 缓存并进行输出 Guard。
 - **AI 配额**：当前 6 次/分钟、40 次/日为**单云函数实例**第一层保护；公开大流量上线前仍需数据库/网关级全局配额，不能把当前实现描述为分布式强限流。
 
@@ -105,7 +110,7 @@ V4 已修复一批生产级问题，但以下项目仍明确保留为后续架�
 3. `cloudfunctions/insight` 与 `miniprogram/cloudfunctions/insight` 仍为部署镜像双副本，测试强制一致，但还不是单一物理源。
 4. CloudBase 云函数 runtime 仍为 Nodejs16.13；升级前须先验证平台支持与 SDK 兼容性。
 5. 区县级真实经纬度尚未落地；当前已通过 UI 与文档明确披露地级行政中心近似值。
-6. 微信开发者工具 / 真机 E2E 仍应在提交比赛前做一次完整人工回归。
+6. 开发者工具**模拟器** E2E 已于 2026-10-15 全绿（wechat-e2e 11 PASS + 1 外部 429 BLOCKED；culture-e2e 6/6）；**真机**（手机预览/相册权限/深浅色视觉）回归仍需在提交比赛前人工完成。
 
 ## 里程碑
 
@@ -115,3 +120,4 @@ V4 已修复一批生产级问题，但以下项目仍明确保留为后续架�
 - **2026-09-30**：首次纵深审查完成。
 - **2026-10-07**：修复绝对出生瞬间、太阳钟日界、精确到分边界、AI 8 秒降级、UI/分享卡/ESLint 覆盖；门禁 145/145。
 - **2026-10-08 · V4 closure**：历史中国夏时制正式接入生产；GAP/FOLD 用户决策链落地；月龄改按实际出生瞬间；UTC 分钟进位修复；地点精度改为诚实近似披露；历史 v2 可复现；今日页统一北京口径；AI 增加 OPENID、严格 schema、服务端 SHA-256、版本化缓存与 Guard；客户端 AI 缓存改会话级；隐私扫描覆盖生产源码；CI 收敛为唯一门禁。**实测 158/158 全绿（TS 28 + mjs 130）。**
+- **2026-10-15 · 科普增量 + E2E 全绿**：传统文化科普两页（culture / culture-detail，19 条 / 5 分类）落地并经 **D-006** 代行签收登记；开发者工具模拟器 E2E 首次全绿（wechat-e2e 11 PASS + 1 外部 429 BLOCKED，culture-e2e 6/6）；`scripts/tools/e2e-orchestrator.mjs` 支持多目标冷启动自动编排（动态端口 + 就绪门 + 退出码聚合）。

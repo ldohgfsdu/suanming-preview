@@ -11,7 +11,11 @@
     "gate:node": "node scripts/check-node-version.mjs verify-node",
     "gate": "node scripts/run-gate.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:mini": "tsc --noEmit -p tsconfig.mini.json",
+    "typecheck:all": "npm run typecheck && npm run typecheck:mini",
     "lint": "eslint .",
+    "sync:cf": "node scripts/sync-cloudfunctions.mjs",
+    "sync:cf:write": "node scripts/sync-cloudfunctions.mjs --write",
     "test": "node --test --experimental-vm-modules dist-test/tests/unit",
     "test:mjs": "node --test --experimental-vm-modules tests/unit",
     "test:build": "node scripts/_clean-dist.mjs && tsc -p tsconfig.test.json",
@@ -22,9 +26,11 @@
     "preinstall": "node scripts/check-node-version.mjs"
   },
   "devDependencies": {
+    "@electron/asar": "^4.3.1",
     "@types/node": "^18.19.0",
     "eslint": "^8.57.0",
     "globals": "^17.12.0",
+    "miniprogram-automator": "^0.12.1",
     "typescript": "5.4.5",
     "typescript-eslint": "^7.7.0"
   }

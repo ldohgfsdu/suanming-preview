@@ -35,6 +35,19 @@ const CLI = process.env.WX_CLI_PATH
 const PROJECT = process.env.WX_PROJECT_PATH
   || path.resolve(__dirname, '../../miniprogram');
 
+// ws 端口发现：优先级：环境变量 > 桥接结果 > 默认 9420。
+// 注意：IDE 的 HTTP 端口（本机 9420）与自动化 ws 端口不能相同——cli auto 的
+// --auto-port 必须指向空闲端口，否则 ws 升级被 HTTP 服务拒掉（已实证踩坑）。
+function resolveWsPort() {
+  if (process.env.WX_WS_PORT) return String(process.env.WX_WS_PORT);
+  try {
+    const r = JSON.parse(fs.readFileSync(path.join(__dirname, '../../.tmp-bridge-result.json'), 'utf8'));
+    if (r && r.wsPort) return String(r.wsPort);
+  } catch { /* 无桥接结果则走默认端口 */ }
+  return '9420';
+}
+const WS_PORT = resolveWsPort();
+
 const results = [];
 function rec(id, name, ok, detail) {
   results.push({ id, name, ok, status: ok ? 'PASS' : 'FAIL', detail });
@@ -60,14 +73,17 @@ async function waitUntil(fn, ms = 10000, every = 200) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- connect (enable automation if needed) ----
+// Node 18.20.2+ BatBadBut 修复后 spawnSync 直接调 .bat 会 EINVAL 静默失败，
+// 必须 shell:true 传整条命令行（路径带空格需自加引号），否则这里三次重试全是空转。
 let mp = null;
 for (let i = 0; i < 3 && !mp; i++) {
   try {
-    mp = await automator.connect({ wsEndpoint: 'ws://127.0.0.1:9420' });
+    mp = await automator.connect({ wsEndpoint: `ws://127.0.0.1:${WS_PORT}` });
   } catch (e) {
-    console.log('[setup] connect failed, enabling automation via cli ...');
+    console.log(`[setup] connect ws://127.0.0.1:${WS_PORT} failed, enabling automation via cli ...`);
     const { spawnSync } = await import('node:child_process');
-    spawnSync(CLI, ['auto', '--project', PROJECT, '--auto-port', '9420'], { stdio: 'ignore' });
+    const cmd = `"${CLI}" auto --project "${PROJECT}" --auto-port ${WS_PORT}`;
+    spawnSync(cmd, { stdio: 'ignore', shell: true, timeout: 30000 });
     await sleep(8000);
   }
 }

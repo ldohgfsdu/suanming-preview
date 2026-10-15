@@ -47,7 +47,9 @@ Page({
   buildYear(year) {
     this.setData({ loading: true });
     // 按四季分组渲染（原来只做了数据分组、wxml 从未消费，四季标题一直没画出来）
-    const groups = SEASON_GROUPS.map((g) => ({ name: g.name, rows: [] }));
+    const groups = /** @type {{ name: string, rows: Array<Record<string, string | number>> }[]} */ (
+      SEASON_GROUPS.map((g) => ({ name: g.name, rows: [] }))
+    );
     SEASON_GROUPS.forEach((g, gi) => {
       for (const ord of g.ords) {
         try {
